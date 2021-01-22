@@ -1,0 +1,116 @@
+v1.4.5 (WIP)
+- Add multithreading support
+- Add ContextMenu (initially supported by List)
+- Add List.Transform and TreeView.Transform
+- Merge upstream mouse support
+
+v1.4.4 (2020-02-24)
+- Fix panic when navigating empty list
+- Fix resize event dimensions on Windows
+- Clarify that Box does not have inner text
+- Do not wrap around form by default
+
+v1.4.3 (2020-02-13)
+- Add SetFocusedFunc to TreeNode
+- Add option to always show scroll bar
+- Fix scrolling Table with PageDown and PageUp
+- Do not wrap around List by default
+
+v1.4.2 (2020-02-02)
+- Add scroll bar to List, DropDown, Table and TreeView
+- Add SetDoneFunc to TreeView
+- Fix mouse support when resuming after Application.Suspend
+- Fix rendering issues with TextViews which have their background color set to
+ColorDefault
+
+v1.4.1 (2020-01-23)
+- Add ProgressBar widget
+- Add Application.RingBell
+- Add example multi-layout application and mouse-enabled application
+- Add documentation for GetChildren methods
+
+v1.4.0 (2020-01-16)
+- Bump version to resolve issues with "go get"
+
+v0.2.2 (2020-01-06)
+- Add optional message displayed after Checkbox
+- Fix Dropdown mouse capture behavior
+- Fix TextView region highlighting on last line
+
+v0.2.1 (2020-01-01)
+- Add initial mouse support (some widgets are unsupported)
+- Add window size change handler
+- Fix resetting TextView color with [-]
+- Fix adding unnecessary padding to some runes
+- Fix handling ANSI color escape codes 39 (default foreground) and 49 (default
+background)
+
+v0.2.0 (2019-12-30)
+- Fork tview as cview
+
+v0.1.20 (2019-07-08)
+- Added autocomplete functionality to InputField.
+
+v0.1.19 (2018-10-28)
+- Added QueueUpdate() and QueueEvent() to Application to help with
+modifications to primitives from goroutines.
+
+v0.1.18 (2018-10-18)
+- InputField elements can now be navigated freely.
+
+v0.1.17 (2018-06-20)
+- Added TreeView.
+
+v0.1.15 (2018-05-02)
+- Flex and Grid don't clear their background per default, thus allowing for
+custom modals. See the Wiki for an example.
+
+v0.1.14 (2018-04-13)
+- Added an Escape() function which keep strings like color or region tags from
+being recognized as such.
+- Added ANSIWriter() and TranslateANSI() which convert ANSI escape sequences to
+tview color tags.
+
+v0.1.13 (2018-04-01)
+- Added background colors and text attributes to color tags.
+
+v0.1.12 (2018-03-13)
+- Added "suspended mode" to Application.
+
+v0.1.11 (2018-03-02)
+- Added a RemoveItem() function to Grid and Flex.
+
+v0.1.10 (2018-02-22)
+- Direct access to the screen object through callback in Box (i.e. for all
+primitives).
+
+v0.1.9 (2018-02-20)
+- Introduced Grid layout.
+- Direct access to the screen object through callbacks in Application.
+
+v0.1.8 (2018-01-17)
+- Color tags can now be used almost everywhere.
+
+v0.1.7 (2018-01-16)
+- Forms can now also have a horizontal layout.
+
+v0.1.6 (2018-01-14)
+- All primitives can now intercept all key events when they have focus.
+- Key events can also be intercepted globally (changed to a more general, consistent handling)
+
+v0.1.5 (2018-01-13)
+- TextView now has word wrapping and text alignment
+
+v0.1.4 (2018-01-12)
+- TextView now accepts color tags with any W3C color (including RGB hex values).
+- Support for wide unicode characters.
+
+v0.1.3 (2018-01-11)
+- Added masking to InputField and password entry to Form.
+
+v0.1.2 (2018-01-10)
+- Added Styles variable with default colors for primitives.
+- Completed some missing InputField functions.
+
+v0.1.1 (2018-01-06)
+- First Release.
