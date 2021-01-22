@@ -1,6 +1,6 @@
 # Cpick
 
-![1.0.0](https://img.shields.io/badge/status-1.0.0-red)
+![1.0.2](https://img.shields.io/badge/status-1.0.2-red)
 [![GoDoc](https://godoc.org/gitlab.com/ethanbakerdev/cpick?status.svg)](https://godoc.org/gitlab.com/ethanbakerdev/cpick)
 [![Go Report Card](https://goreportcard.com/badge/gitlab.com/ethanbakerdev/cpick)](https://goreportcard.com/report/gitlab.com/ethanbakerdev/cpick)
 [![Coverage](https://gocover.io/_badge/gitlab.com/ethanbakerdev/cpick)](https://gocover.io/gitlab.com/ethanbakerdev/cpick)
