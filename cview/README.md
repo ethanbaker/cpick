@@ -1,4 +1,4 @@
-This is a fork of cview used to customize cell padding in tables in order for [cpick](gitlab.com/ethanbakerdev/cpick) to work!
+This is a fork of cview used to customize cell padding in tables in order for [cpick](github.com/ethanbaker/cpick) to work!
 
 # cview
 [![GoDoc](https://gitlab.com/tslocum/godoc-static/-/raw/master/badge.svg)](https://docs.rocketnine.space/gitlab.com/tslocum/cview)

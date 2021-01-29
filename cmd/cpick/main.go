@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"gitlab.com/ethanbakerdev/cpick"
+	"github.com/ethanbaker/cpick"
 )
 
 func main() {

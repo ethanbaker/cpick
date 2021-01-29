@@ -1,11 +1,11 @@
-module gitlab.com/ethanbakerdev/cpick
+module github.com/ethanbaker/cpick
 
-go 1.14
+go 1.15
 
 require (
-	github.com/gdamore/tcell v1.3.0
-	github.com/lucasb-eyer/go-colorful v1.0.3
+	github.com/ethanbaker/colors v0.0.0-20210129164941-24dfc6518fbf
+	github.com/gdamore/tcell v1.4.0
+	github.com/lucasb-eyer/go-colorful v1.2.0
 	github.com/mattn/go-runewidth v0.0.9
-	github.com/rivo/uniseg v0.1.0
-	gitlab.com/ethanbakerdev/colors v0.0.0-20200515042549-c7fad12b1244
+	github.com/rivo/uniseg v0.2.0
 )

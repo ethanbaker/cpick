@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gitlab.com/ethanbakerdev/cpick"
+	"github.com/ethanbaker/cpick"
 )
 
 func Test_Start(t *testing.T) {

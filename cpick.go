@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell"
-	"gitlab.com/ethanbakerdev/colors"
-	"gitlab.com/ethanbakerdev/cpick/cview"
+	"github.com/ethanbaker/colors"
+	"github.com/ethanbaker/cpick/cview"
 )
 
 // Settings

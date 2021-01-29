@@ -1,9 +1,9 @@
 # Cpick
 
-![1.0.2](https://img.shields.io/badge/status-1.0.2-red)
-[![GoDoc](https://godoc.org/gitlab.com/ethanbakerdev/cpick?status.svg)](https://godoc.org/gitlab.com/ethanbakerdev/cpick)
-[![Go Report Card](https://goreportcard.com/badge/gitlab.com/ethanbakerdev/cpick)](https://goreportcard.com/report/gitlab.com/ethanbakerdev/cpick)
-[![Coverage](https://gocover.io/_badge/gitlab.com/ethanbakerdev/cpick)](https://gocover.io/gitlab.com/ethanbakerdev/cpick)
+![1.1.0](https://img.shields.io/badge/status-1.1.0-red)
+[![GoDoc](https://godoc.org/github.com/ethanbaker/cpick?status.svg)](https://godoc.org/github.com/ethanbaker/cpick)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ethanbaker/cpick)](https://goreportcard.com/report/github.com/ethanbaker/cpick)
+[![Coverage](https://gocover.io/_badge/github.com/ethanbaker/cpick)](https://gocover.io/github.com/ethanbaker/cpick)
 
 
 An extensive color picker in the terminal.
@@ -14,7 +14,7 @@ An extensive color picker in the terminal.
 
 ## Dependencies
 
-Cpick depends on [Tcell](github.com/gdamore/tcell) and [Colors](gitlab.com/ethanbakerdev/colors).
+Cpick depends on [Tcell](github.com/gdamore/tcell) and [Colors](github.com/ethanbaker/colors).
 
 Cpick also uses [Cview](gitlab.com/tslocum/cview). However, Cview currently has a feature where the table cells are drawn with a required space in between cells, which ruins the aesthetic of Cpick. In order to fix this, a forked version of Cview is used within the Cpick package that has the required fixes. This may lead to bugs and issues in older versions of Cview that are not able to be readliy fixed until Cview adopts required features.
 
@@ -24,9 +24,10 @@ Cpick also uses [Cview](gitlab.com/tslocum/cview). However, Cview currently has 
 
 #### Golang 
 
-To include the Cpick package, include the line `import "gitlab.com/ethanbakerdev/cpick"`.
+To include the Cpick package, include the line `import "github.com/ethanbaker/cpick"`.
 
-To make a command based off of the package, run `go install` in the `cmd/cpick` directory. Command usage can be found in the [docs](https://godoc.org/gitlab.com/ethanbakerdev/cpick).
+To make a command based off of the package, run `go install` in the
+`cmd/cpick` directory. Command usage can be found in the [docs](https://godoc.org/github.com/ethanbaker/cpick).
 
 #### Arch Linux (Arch User Repository)
 
@@ -40,7 +41,7 @@ Coming soon!
 
 ## Documentation
 
-[Documentation](https://godoc.org/gitlab.com/ethanbakerdev/cpick) is present using Godoc.
+[Documentation](https://godoc.org/github.com/ethanbaker/cpick) is present using Godoc.
 
 ---
 
@@ -58,11 +59,11 @@ Sandbox determines whether or not Cpick will return a color. Sandbox is useful f
 
 Testing is used to test coverage and validness of Cpick without requiring user input. Testing is useful for making sure Cpick can work on your device. Setting testing to `true` turns on the test mode, while setting testing to `false` keeps cpick on normal mode.
 
-All of the tests can be found in the [tests.go](https://gitlab.com/ethanbakerdev/cpick/-/blob/master/tests.go) file (COMING SOON).
+All of the tests can be found in the [tests.go](https://github.com/ethanbaker/cpick/blob/master/tests.go) file.
 
 #### Controls/Keys
 
-If you are looking for a simplified version, check out the [docs](https://gitlab.com/ethanbakerdev/cpick/-/blob/master/colors.go). Here is a more in-depth explanation.
+If you are looking for a simplified version, check out the [docs](https://github.com/ethanbaker/cpick/blob/master/colors.go). Here is a more in-depth explanation.
 
 You can also see a minified help version by pressing \` while the Cpick application is running.
 
@@ -134,12 +135,12 @@ An individual color is an object that consists of two keys: `name` and `value`. 
 ]
 ~~~
 
-Cpick comes with three color types as a default: CSS, Solarized, and XTERM. In order to fix complicated import problems, the json data is present in the [colors.go](https://gitlab.com/ethanbakerdev/cpick/-/blob/master/colors.go) file as a string. The preset data always has the lowest priority for being used.
+Cpick comes with three color types as a default: CSS, Solarized, and XTERM. In order to fix complicated import problems, the json data is present in the [colors.go](https://github.com/ethanbaker/cpick/blob/master/colors.go) file as a string. The preset data always has the lowest priority for being used.
 
 ---
 
 ## Issues, Suggestions, and Patches
 
-For issues and suggestions, please include as much useful information is possible. Make sure the issue is actually present or the suggestion is not inculded.
+For issues and suggestions, please include as much useful information is possible. Make sure the issue is actually present or the suggestion is not included.
 
 For patches, please submit them as pull requests.

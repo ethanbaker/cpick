@@ -63,7 +63,7 @@ Return values
 	* Name
 
 RGB, HSV, HSL, CMYK, Hex, Decimal, and Ansi all come from the colors package
-(gitlab.com/ethanbakerdev/colors).
+(github.com/ethanbaker/colors).
 
 Name will only be returned if you select a value from the preset color table. Name
 will be "Custom color" if no preset color is selected.
