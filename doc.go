@@ -122,7 +122,7 @@ TYPES
 		hexadecimal format. Css takes another keyword, [TAG], which is the specified css
 		tag that will be outputted. By default, [TAG]="color".
 
-		bash: Return a declare statement with the color constant as an ansi escape code.
+		bash: Return a readonly statement with the color constant as an ansi escape code.
 		Bash takes another keyword, [NAME], that is used as the name of the declaration
 		statement. By default, [NAME]="custom".
 

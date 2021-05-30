@@ -12,6 +12,12 @@ An extensive color picker in the terminal.
 
 ---
 
+## About
+
+Cpick is an interactive color picker in the terminal. You can run Cpick in any true color terminal, and you can see thousands of unique colors, either from preset values or gradients. Each color has its own formats in many different forms, including as RGB, HSV, CMYK, and more. 
+
+---
+
 ## Dependencies
 
 Cpick depends on [Tcell](github.com/gdamore/tcell) and [Colors](github.com/ethanbaker/colors).
@@ -27,6 +33,8 @@ Cpick also uses [Cview](gitlab.com/tslocum/cview). However, Cview currently has 
 To include the Cpick package, include the line `import "github.com/ethanbaker/cpick"`.
 
 To make a command based off of the package, run `go install` in the `cmd/cpick` directory. Command usage can be found in the [docs](https://godoc.org/github.com/ethanbaker/cpick).
+
+Cpick also utilizes [cmdtab](https://github.com/rwxrob/cmdtab), which offers tab completion for Cpick. If you wish to enable tab completion, add the line `complete -C cpick cpick` to your `~/.bashrc` file.
 
 #### Arch Linux (Arch User Repository)
 

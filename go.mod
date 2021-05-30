@@ -12,4 +12,5 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0
 	github.com/mattn/go-runewidth v0.0.10
 	github.com/rivo/uniseg v0.2.0
+	github.com/rwxrob/cmdtab v0.10.2 // indirect
 )
