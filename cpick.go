@@ -15,7 +15,7 @@ import (
 
 	color "github.com/ethanbaker/colors"
 	"github.com/ethanbaker/cpick/cview"
-	tcell "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Settings
@@ -444,7 +444,10 @@ func hScreenSetup() {
 func svScreenSetup() {
 	// Fill the text with the default values
 	darkSVBlock.SetText(colorBlock)
+	darkSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
+
 	lightSVBlock.SetText(colorBlock)
+	lightSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
 
 	darkHSV := color.HSV{0, 100, 99}
 	lightHSV := color.HSV{0, 100, 100}
@@ -454,6 +457,8 @@ func svScreenSetup() {
 	darkTitle := cview.NewTextView()
 	darkTitle.SetText("  Dark Tint Color")
 
+	darkSVText.SetScrollBarVisibility(cview.ScrollBarNever)
+
 	darkSVFlex := cview.NewFlex()
 	darkSVFlex.SetDirection(cview.FlexRow)
 	darkSVFlex.AddItem(darkTitle, 0, 1, false)
@@ -462,6 +467,8 @@ func svScreenSetup() {
 
 	lightTitle := cview.NewTextView()
 	lightTitle.SetText("  Light Tint Color")
+
+	lightSVText.SetScrollBarVisibility(cview.ScrollBarNever)
 
 	lightSVFlex := cview.NewFlex()
 	lightSVFlex.SetDirection(cview.FlexRow)
