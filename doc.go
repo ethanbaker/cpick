@@ -6,30 +6,29 @@ Controls
 
 Help screen:
 
-	* View help screen: ~ (Press enter to exit)
+	* View help screen: Backtick (`)
 
 For everything:
 
-	* Movement: standard vim keys (hjkl) or arrow keys
-	* Advanced movement: press g to go to the top left of the table and
-	  press G to go to the bottom right of the table.
-	* Exiting the application: q or escape
+	* Movement: Use the standard vim keys (hjkl) or arrow keys
+	* Advanced movement: Press g to go to the top left of the table and press G to go to the bottom right of the table.
+	* Exiting the application: Press q or Escape
 
-For hue screen (the first one)
+For hue screen (the first screen seen when cpick runs; it contains a slider at the top of the screen, and a list of colors at the bottom)
 
-	* Creating a new table based on selection: enter
-	* Switch between slider and preset color table: space
-	* Switch between color types on preset color table: C (forward) and c (backwards)
-	* Enter search menu (for preset colors): ?
-	* Go to next search instance: N (forward) and n (backward)
-	* Switch to saturation-value table: tab
+	* Creating a new table based on selection: Press Enter
+	* Switch between slider and preset color table: Press Space
+	* Switch between color types on preset color table: Press C to go forwards and c to go backwards (same as vim)
+	* Enter search menu (for preset colors): Press question mark (?)
+	* Go to next search instance: Press N to go forwards and n to go backwards (same as vim)
+	* Switch to saturation-value table: Press Tab
 
-For saturation-value screen (the second one)
+For saturation-value screen (the second screen; it contains a large gradient of a single hue and the corresponding color values on the right)
 
-	* Select your final color: enter
-	* Switch to hue screen: tab
+	* Select your final color: Press Enter
+	* Switch to hue screen: Press Tab
 
-For the search screen (when you press ?)
+For the search menu (What opens when you press the question mark (?))
 
 	To search for a color name, type the name of the color into the search bar. Related colors will appear below.
 	Once a color (or phrase) is desired, press enter. You can press N (forward) and n (reverse) to swap between instances.
@@ -69,7 +68,7 @@ Name will only be returned if you select a value from the preset color table. Na
 will be "Custom color" if no preset color is selected.
 
 
-"Hello World"
+A "Hello World" for cpick:
 
 An example to start cpick in "normal" mode: cpick.Start(false, false)
 
@@ -77,6 +76,7 @@ An example to start cpick in "normal" mode: cpick.Start(false, false)
 Command Usage:
 
 A cpick bash command can be installed by running `go install` in the cmd/cpick/ directory.
+
 
 Cpick manual:
 

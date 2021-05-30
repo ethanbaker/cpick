@@ -1,6 +1,6 @@
 package cview
 
-import "github.com/gdamore/tcell"
+import "github.com/gdamore/tcell/v2"
 
 // Primitive is the top-most interface for all graphical primitives.
 type Primitive interface {
@@ -15,6 +15,12 @@ type Primitive interface {
 
 	// SetRect sets a new position of the primitive.
 	SetRect(x, y, width, height int)
+
+	// GetVisible returns whether or not the primitive is visible.
+	GetVisible() bool
+
+	// SetVisible sets whether or not the primitive is visible.
+	SetVisible(v bool)
 
 	// InputHandler returns a handler which receives key events when it has focus.
 	// It is called by the Application class.

@@ -2,29 +2,15 @@
 Package cview implements rich widgets for terminal based user interfaces.
 
 See the demos folder and the example application provided with the
-Application.NewApplication documentation for usage examples.
+NewApplication documentation for usage examples.
 
-Widgets
+Types
 
-The following widgets are available:
+This package is built on top of tcell, which provides the types necessary to
+create a terminal-based application (e.g. EventKey). For information on
+inherited types see the tcell documentation.
 
-  Button - Button which is activated when the user selects it.
-  Checkbox - Selectable checkbox for boolean values.
-  DropDown - Drop-down selection field.
-  Flex - A Flexbox based layout manager.
-  Form - Form composed of input fields, drop down selections, checkboxes, and
-    buttons.
-  Grid - A grid based layout manager.  InputField - Single-line text entry field.
-  List - A navigable text list with optional keyboard shortcuts.
-  Modal - A centered window with a text message and one or more buttons.
-  Pages - A page based layout manager.
-  ProgressBar - Indicates the progress of an operation.
-  Table - A scrollable display of tabular data. Table cells, rows, or columns
-    may also be highlighted.
-  TextView - A scrollable window that displays multi-colored text. Text may
-    also be highlighted.
-  TreeView - A scrollable display for hierarchical data. Tree nodes can be
-    highlighted, collapsed, expanded, and more.
+tcell: https://github.com/gdamore/tcell
 
 Base Primitive
 
@@ -33,11 +19,32 @@ primitive, Box, and thus inherit its functions. This isn't necessarily
 required, but it makes more sense than reimplementing Box's functionality in
 each widget.
 
-Types
+Widgets
 
-This package is a fork of https://github.com/rivo/tview which is based on
-https://github.com/gdamore/tcell. It uses types and constants from tcell
-(e.g. colors and keyboard values).
+The following widgets are available:
+
+  Button - Button which is activated when the user selects it.
+  CheckBox - Selectable checkbox for boolean values.
+  DropDown - Drop-down selection field.
+  Flex - A Flexbox based layout manager.
+  Form - Form composed of input fields, drop down selections, checkboxes, and
+    buttons.
+  Grid - A grid based layout manager.
+  InputField - Single-line text entry field.
+  List - A navigable text list with optional keyboard shortcuts.
+  Modal - A centered window with a text message and one or more buttons.
+  Panels - A panel based layout manager.
+  ProgressBar - Indicates the progress of an operation.
+  Table - A scrollable display of tabular data. Table cells, rows, or columns
+    may also be highlighted.
+  TextView - A scrollable window that displays multi-colored text. Text may
+    also be highlighted.
+  TreeView - A scrollable display for hierarchical data. Tree nodes can be
+    highlighted, collapsed, expanded, and more.
+  Window - A draggable and resizable container.
+
+Widgets may be used without an application created via NewApplication, allowing
+them to be integrated into any tcell-based application.
 
 Concurrency
 
@@ -50,22 +57,46 @@ Unicode Support
 
 This package supports unicode characters including wide characters.
 
+Keyboard Shortcuts
+
+Widgets use keyboard shortcuts (a.k.a. keybindings) such as arrow keys and
+H/J/K/L by default. You may replace these defaults by modifying the shortcuts
+listed in Keys. You may also override keyboard shortcuts globally by setting a
+handler with Application.SetInputCapture.
+
+cbind is a library which simplifies the process of adding support for custom
+keyboard shortcuts to your application. It allows setting handlers for
+EventKeys. It also translates between EventKeys and human-readable strings such
+as "Alt+Enter". This makes it possible to store keybindings in a configuration
+file.
+
+cbind: https://gitlab.com/tslocum/cbind
+
+Bracketed Paste Mode
+
+Bracketed paste mode is enabled by default. It may be disabled by calling
+Application.EnableBracketedPaste before Application.Run. The following demo
+shows how to handle paste events and process pasted text.
+
+tcell bracketed paste demo: https://github.com/gdamore/tcell/blob/master/_demos/mouse.go
+
 Mouse Support
 
 Mouse support may be enabled by calling Application.EnableMouse before
 Application.Run. See the example application provided with the
 Application.EnableMouse documentation.
 
+Double clicks are treated single clicks by default. Specify a maximum duration
+between clicks with Application.SetDoubleClickInterval to enable double clicks.
+A standard duration is provided as StandardDoubleClick.
+
 Mouse events are passed to:
 
 - The handler set with SetMouseCapture, which is reserved for use by application
-developers to permanently intercept mouse events.
-
-- The ObserveMouseEvent method of every widget under the mouse, bottom to top.
+developers to permanently intercept mouse events. Return nil to stop
+propagation.
 
 - The MouseHandler method of the topmost widget under the mouse.
-
-Event handlers may return nil to stop propagation.
 
 Colors
 
@@ -82,8 +113,8 @@ square brackets. Examples:
 
 A color tag changes the color of the characters following that color tag. This
 applies to almost everything from box titles, list text, form item labels, to
-table cells. In a TextView, this functionality has to be switched on explicitly.
-See the TextView documentation for more information.
+table cells. In a TextView, this functionality must be explicitly enabled. See
+the TextView documentation for more information.
 
 Color tags may contain not just the foreground (text) color but also the
 background color and additional flags. In fact, the full definition of a color
@@ -102,8 +133,10 @@ terminal):
   l: blink
   b: bold
   d: dim
+  i: italic
   r: reverse (switch foreground and background color)
   u: underline
+  s: strikethrough
 
 Examples:
 
@@ -133,11 +166,25 @@ character that may be used in color or region tags will be recognized. Examples:
 
 You can use the Escape() function to insert brackets automatically where needed.
 
+Setting the background color of a primitive to tcell.ColorDefault will use the
+default terminal background color. To enable transparency (allowing one or more
+primitives to display behind a primitive) call SetBackgroundTransparent. The
+screen is not cleared before drawing the application. Overlaying transparent
+widgets directly onto the screen may result in artifacts. To resolve this, add
+a blank, non-transparent Box to the bottom layer of the interface via Panels,
+or set a handler via SetBeforeDrawFunc which clears the screen.
+
 Styles
 
 When primitives are instantiated, they are initialized with colors taken from
 the global Styles variable. You may change this variable to adapt the look and
 feel of the primitives to your preferred style.
+
+Scroll Bars
+
+Scroll bars are supported by the following widgets: List, Table, TextView and
+TreeView. Each widget will display scroll bars automatically when there are
+additional items offscreen. See SetScrollBarColor and SetScrollBarVisibility.
 
 Hello World
 

@@ -1,4 +1,5 @@
 .idea/
 dist/
-*.sh
 vendor/
+*.sh
+cview.test

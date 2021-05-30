@@ -3,7 +3,7 @@ package cview
 import (
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Configuration values.
@@ -24,8 +24,6 @@ type flexItem struct {
 // primitives are arranged horizontally or vertically. The way they are
 // distributed along that dimension depends on their layout settings, which is
 // either a fixed length or a proportional length. See AddItem() for details.
-//
-// See https://gitlab.com/tslocum/cview/wiki/Flex for an example.
 type Flex struct {
 	*Box
 
@@ -39,46 +37,52 @@ type Flex struct {
 	// instead its box dimensions.
 	fullScreen bool
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 // NewFlex returns a new flexbox layout container with no primitives and its
 // direction set to FlexColumn. To add primitives to this layout, see AddItem().
 // To change the direction, see SetDirection().
 //
-// Note that Box, the superclass of Flex, will have its background color set to
-// transparent so that any nil flex items will leave their background unchanged.
-// To clear a Flex's background before any items are drawn, set it to the
-// desired color:
+// Note that Flex will have a transparent background by default so that any nil
+// flex items will show primitives behind the Flex.
+// To disable this transparency:
 //
-//   flex.SetBackgroundColor(cview.Styles.PrimitiveBackgroundColor)
+//   flex.SetBackgroundTransparent(false)
 func NewFlex() *Flex {
 	f := &Flex{
-		Box:       NewBox().SetBackgroundColor(tcell.ColorDefault),
+		Box:       NewBox(),
 		direction: FlexColumn,
 	}
+	f.SetBackgroundTransparent(true)
 	f.focus = f
 	return f
 }
 
+// GetDirection returns the direction in which the contained primitives are
+// distributed. This can be either FlexColumn (default) or FlexRow.
+func (f *Flex) GetDirection() int {
+	f.RLock()
+	defer f.RUnlock()
+	return f.direction
+}
+
 // SetDirection sets the direction in which the contained primitives are
 // distributed. This can be either FlexColumn (default) or FlexRow.
-func (f *Flex) SetDirection(direction int) *Flex {
+func (f *Flex) SetDirection(direction int) {
 	f.Lock()
 	defer f.Unlock()
 
 	f.direction = direction
-	return f
 }
 
 // SetFullScreen sets the flag which, when true, causes the flex layout to use
 // the entire screen space instead of whatever size it is currently assigned to.
-func (f *Flex) SetFullScreen(fullScreen bool) *Flex {
+func (f *Flex) SetFullScreen(fullScreen bool) {
 	f.Lock()
 	defer f.Unlock()
 
 	f.fullScreen = fullScreen
-	return f
 }
 
 // AddItem adds a new item to the container. The "fixedSize" argument is a width
@@ -93,19 +97,37 @@ func (f *Flex) SetFullScreen(fullScreen bool) *Flex {
 // primitive receives focus. If multiple items have the "focus" flag set to
 // true, the first one will receive focus.
 //
-// You can provide a nil value for the primitive. This will still consume screen
-// space but nothing will be drawn.
-func (f *Flex) AddItem(item Primitive, fixedSize, proportion int, focus bool) *Flex {
+// You can provide a nil value for the primitive. This will fill the empty
+// screen space with the default background color. To show content behind the
+// space, add a Box with a transparent background instead.
+func (f *Flex) AddItem(item Primitive, fixedSize, proportion int, focus bool) {
 	f.Lock()
 	defer f.Unlock()
 
+	if item == nil {
+		item = NewBox()
+	}
+
 	f.items = append(f.items, &flexItem{Item: item, FixedSize: fixedSize, Proportion: proportion, Focus: focus})
-	return f
+}
+
+// AddItemAtIndex adds an item to the flex at a given index.
+// For more information see AddItem.
+func (f *Flex) AddItemAtIndex(index int, item Primitive, fixedSize, proportion int, focus bool) {
+	f.Lock()
+	defer f.Unlock()
+	newItem := &flexItem{Item: item, FixedSize: fixedSize, Proportion: proportion, Focus: focus}
+
+	if index == 0 {
+		f.items = append([]*flexItem{newItem}, f.items...)
+	} else {
+		f.items = append(f.items[:index], append([]*flexItem{newItem}, f.items[index:]...)...)
+	}
 }
 
 // RemoveItem removes all items for the given primitive from the container,
 // keeping the order of the remaining items intact.
-func (f *Flex) RemoveItem(p Primitive) *Flex {
+func (f *Flex) RemoveItem(p Primitive) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -114,13 +136,12 @@ func (f *Flex) RemoveItem(p Primitive) *Flex {
 			f.items = append(f.items[:index], f.items[index+1:]...)
 		}
 	}
-	return f
 }
 
 // ResizeItem sets a new size for the item(s) with the given primitive. If there
 // are multiple Flex items with the same primitive, they will all receive the
 // same size. For details regarding the size parameters, see AddItem().
-func (f *Flex) ResizeItem(p Primitive, fixedSize, proportion int) *Flex {
+func (f *Flex) ResizeItem(p Primitive, fixedSize, proportion int) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -130,11 +151,14 @@ func (f *Flex) ResizeItem(p Primitive, fixedSize, proportion int) *Flex {
 			item.Proportion = proportion
 		}
 	}
-	return f
 }
 
 // Draw draws this primitive onto the screen.
 func (f *Flex) Draw(screen tcell.Screen) {
+	if !f.GetVisible() {
+		return
+	}
+
 	f.Box.Draw(screen)
 
 	f.Lock()
@@ -215,8 +239,8 @@ func (f *Flex) Focus(delegate func(p Primitive)) {
 
 // HasFocus returns whether or not this primitive has focus.
 func (f *Flex) HasFocus() bool {
-	f.Lock()
-	defer f.Unlock()
+	f.RLock()
+	defer f.RUnlock()
 
 	for _, item := range f.items {
 		if item.Item != nil && item.Item.GetFocusable().HasFocus() {
@@ -235,6 +259,10 @@ func (f *Flex) MouseHandler() func(action MouseAction, event *tcell.EventMouse, 
 
 		// Pass mouse events along to the first child item that takes it.
 		for _, item := range f.items {
+			if item.Item == nil {
+				continue
+			}
+
 			consumed, capture = item.Item.MouseHandler()(action, event, setFocus)
 			if consumed {
 				return

@@ -3,7 +3,7 @@ package cview
 import (
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // frameText holds information about a line of text shown in the frame.
@@ -16,8 +16,6 @@ type frameText struct {
 
 // Frame is a wrapper which adds space around another primitive. In addition,
 // the top area (header) and the bottom area (footer) may also contain text.
-//
-// See https://gitlab.com/tslocum/cview/wiki/Frame for an example.
 type Frame struct {
 	*Box
 
@@ -30,7 +28,7 @@ type Frame struct {
 	// Border spacing.
 	top, bottom, header, footer, left, right int
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 // NewFrame returns a new frame around the given primitive. The primitive's
@@ -60,7 +58,7 @@ func NewFrame(primitive Primitive) *Frame {
 // the Align constants. Rows in the header are printed top to bottom, rows in
 // the footer are printed bottom to top. Note that long text can overlap as
 // different alignments will be placed on the same row.
-func (f *Frame) AddText(text string, header bool, align int, color tcell.Color) *Frame {
+func (f *Frame) AddText(text string, header bool, align int, color tcell.Color) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -70,31 +68,32 @@ func (f *Frame) AddText(text string, header bool, align int, color tcell.Color) 
 		Align:  align,
 		Color:  color,
 	})
-	return f
 }
 
 // Clear removes all text from the frame.
-func (f *Frame) Clear() *Frame {
+func (f *Frame) Clear() {
 	f.Lock()
 	defer f.Unlock()
 
 	f.text = nil
-	return f
 }
 
 // SetBorders sets the width of the frame borders as well as "header" and
 // "footer", the vertical space between the header and footer text and the
 // contained primitive (does not apply if there is no text).
-func (f *Frame) SetBorders(top, bottom, header, footer, left, right int) *Frame {
+func (f *Frame) SetBorders(top, bottom, header, footer, left, right int) {
 	f.Lock()
 	defer f.Unlock()
 
 	f.top, f.bottom, f.header, f.footer, f.left, f.right = top, bottom, header, footer, left, right
-	return f
 }
 
 // Draw draws this primitive onto the screen.
 func (f *Frame) Draw(screen tcell.Screen) {
+	if !f.GetVisible() {
+		return
+	}
+
 	f.Box.Draw(screen)
 
 	f.Lock()
@@ -139,7 +138,7 @@ func (f *Frame) Draw(screen tcell.Screen) {
 		}
 
 		// Draw text.
-		Print(screen, text.Text, x, y, width, text.Align, text.Color)
+		Print(screen, []byte(text.Text), x, y, width, text.Align, text.Color)
 	}
 
 	// Set the size of the contained primitive.
@@ -169,8 +168,8 @@ func (f *Frame) Focus(delegate func(p Primitive)) {
 
 // HasFocus returns whether or not this primitive has focus.
 func (f *Frame) HasFocus() bool {
-	f.Lock()
-	defer f.Unlock()
+	f.RLock()
+	defer f.RUnlock()
 
 	focusable, ok := f.primitive.(Focusable)
 	if ok {

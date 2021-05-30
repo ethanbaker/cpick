@@ -7,15 +7,14 @@ stages:
 fmt:
   stage: validate
   script:
-    - gofmt -l -s -e .
-    - exit $(gofmt -l -s -e . | wc -l)
+    - make check-fmt
 
 vet:
   stage: validate
   script:
-    - go vet -composites=false ./...
+    - make vet
 
 test:
   stage: validate
   script:
-    - go test -race -v ./...
+    - make test

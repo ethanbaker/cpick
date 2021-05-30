@@ -3,26 +3,24 @@ package cview
 import (
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Button is labeled box that triggers an action when selected.
-//
-// See https://gitlab.com/tslocum/cview/wiki/Button for an example.
 type Button struct {
 	*Box
 
 	// The text to be displayed before the input area.
-	label string
+	label []byte
 
 	// The label color.
 	labelColor tcell.Color
 
 	// The label color when the button is in focus.
-	labelColorActivated tcell.Color
+	labelColorFocused tcell.Color
 
 	// The background color when the button is in focus.
-	backgroundColorActivated tcell.Color
+	backgroundColorFocused tcell.Color
 
 	// An optional function which is called when the button was selected.
 	selected func()
@@ -31,75 +29,71 @@ type Button struct {
 	// key is provided indicating which key was pressed to leave (tab or backtab).
 	blur func(tcell.Key)
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 // NewButton returns a new input field.
 func NewButton(label string) *Button {
-	box := NewBox().SetBackgroundColor(Styles.ContrastBackgroundColor)
+	box := NewBox()
+	box.SetBackgroundColor(Styles.ContrastBackgroundColor)
 	box.SetRect(0, 0, TaggedStringWidth(label)+4, 1)
 	return &Button{
-		Box:                      box,
-		label:                    label,
-		labelColor:               Styles.PrimaryTextColor,
-		labelColorActivated:      Styles.InverseTextColor,
-		backgroundColorActivated: Styles.PrimaryTextColor,
+		Box:                    box,
+		label:                  []byte(label),
+		labelColor:             Styles.PrimaryTextColor,
+		labelColorFocused:      Styles.InverseTextColor,
+		backgroundColorFocused: Styles.PrimaryTextColor,
 	}
 }
 
 // SetLabel sets the button text.
-func (b *Button) SetLabel(label string) *Button {
+func (b *Button) SetLabel(label string) {
 	b.Lock()
 	defer b.Unlock()
 
-	b.label = label
-	return b
+	b.label = []byte(label)
 }
 
 // GetLabel returns the button text.
 func (b *Button) GetLabel() string {
-	b.Lock()
-	defer b.Unlock()
+	b.RLock()
+	defer b.RUnlock()
 
-	return b.label
+	return string(b.label)
 }
 
 // SetLabelColor sets the color of the button text.
-func (b *Button) SetLabelColor(color tcell.Color) *Button {
+func (b *Button) SetLabelColor(color tcell.Color) {
 	b.Lock()
 	defer b.Unlock()
 
 	b.labelColor = color
-	return b
 }
 
-// SetLabelColorActivated sets the color of the button text when the button is
+// SetLabelColorFocused sets the color of the button text when the button is
 // in focus.
-func (b *Button) SetLabelColorActivated(color tcell.Color) *Button {
+func (b *Button) SetLabelColorFocused(color tcell.Color) {
 	b.Lock()
 	defer b.Unlock()
 
-	b.labelColorActivated = color
-	return b
+	b.labelColorFocused = color
 }
 
-// SetBackgroundColorActivated sets the background color of the button text when
+// SetBackgroundColorFocused sets the background color of the button text when
 // the button is in focus.
-func (b *Button) SetBackgroundColorActivated(color tcell.Color) *Button {
+func (b *Button) SetBackgroundColorFocused(color tcell.Color) {
 	b.Lock()
 	defer b.Unlock()
 
-	b.backgroundColorActivated = color
-	return b
+	b.backgroundColorFocused = color
 }
 
 // SetSelectedFunc sets a handler which is called when the button was selected.
-func (b *Button) SetSelectedFunc(handler func()) *Button {
+func (b *Button) SetSelectedFunc(handler func()) {
 	b.Lock()
 	defer b.Unlock()
 
 	b.selected = handler
-	return b
 }
 
 // SetBlurFunc sets a handler which is called when the user leaves the button.
@@ -109,16 +103,19 @@ func (b *Button) SetSelectedFunc(handler func()) *Button {
 //   - KeyEscape: Leaving the button with no specific direction.
 //   - KeyTab: Move to the next field.
 //   - KeyBacktab: Move to the previous field.
-func (b *Button) SetBlurFunc(handler func(key tcell.Key)) *Button {
+func (b *Button) SetBlurFunc(handler func(key tcell.Key)) {
 	b.Lock()
 	defer b.Unlock()
 
 	b.blur = handler
-	return b
 }
 
 // Draw draws this primitive onto the screen.
 func (b *Button) Draw(screen tcell.Screen) {
+	if !b.GetVisible() {
+		return
+	}
+
 	b.Lock()
 	defer b.Unlock()
 
@@ -126,8 +123,8 @@ func (b *Button) Draw(screen tcell.Screen) {
 	borderColor := b.borderColor
 	backgroundColor := b.backgroundColor
 	if b.focus.HasFocus() {
-		b.backgroundColor = b.backgroundColorActivated
-		b.borderColor = b.labelColorActivated
+		b.backgroundColor = b.backgroundColorFocused
+		b.borderColor = b.labelColorFocused
 		defer func() {
 			b.borderColor = borderColor
 		}()
@@ -143,7 +140,7 @@ func (b *Button) Draw(screen tcell.Screen) {
 		y = y + height/2
 		labelColor := b.labelColor
 		if b.focus.HasFocus() {
-			labelColor = b.labelColorActivated
+			labelColor = b.labelColorFocused
 		}
 		Print(screen, b.label, x, y, width, AlignCenter, labelColor)
 	}
@@ -153,14 +150,13 @@ func (b *Button) Draw(screen tcell.Screen) {
 func (b *Button) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
 	return b.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
 		// Process key event.
-		switch key := event.Key(); key {
-		case tcell.KeyEnter: // Selected.
+		if HitShortcut(event, Keys.Select, Keys.Select2) {
 			if b.selected != nil {
 				b.selected()
 			}
-		case tcell.KeyBacktab, tcell.KeyTab, tcell.KeyEscape: // Leave. No action.
+		} else if HitShortcut(event, Keys.Cancel, Keys.MovePreviousField, Keys.MoveNextField) {
 			if b.blur != nil {
-				b.blur(key)
+				b.blur(event.Key())
 			}
 		}
 	})

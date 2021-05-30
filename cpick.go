@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gdamore/tcell"
-	"github.com/ethanbaker/colors"
+	color "github.com/ethanbaker/colors"
 	"github.com/ethanbaker/cpick/cview"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // Settings
@@ -74,25 +74,39 @@ var colorPageText string = "██████████  %v    %v  "
 var helpString string = `
 Movement: vim keys (h,j,k,l) or arrow keys
 
+
 Quitting the application: escape or q
+
 
 While on the hue table:
 	- Press enter to create a new saturation-value table
+
 	- Press space to select the preset color table
+
 	- Press tab to switch to the saturation-value table
+
 
 While on the preset color table:
 	- Press enter to create a new saturation-value table
+
 	- Press space to select the hue table
+
 	- Press tab to switch to the saturation-value table
+
 	- Press C to go to the next color page
+
 	- Press c to go to the previous color page
+
 	- Press ? to enter a search menu for colors
+
 	- Press N to go to the next search instance
+
 	- Press n to go to the previous search instance
+
 
 While on the saturation-value table:
 	- Press enter to select the final color
+
 	- Press tab to switch to the hue table
 `
 
@@ -173,9 +187,6 @@ func inputCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 		showHelp()
 
 	case event.Key() == tcell.KeyCtrlF || event.Rune() == '?':
-		if svTable.HasFocus() {
-			pages.SwitchToPage("Hue page")
-		}
 		showSearch()
 		return nil
 	}
@@ -203,7 +214,7 @@ func hCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 
 		row, col := colorInfo[colorPageIndex].table.GetSelection()
 		text := colorInfo[colorPageIndex].table.GetCell(row, col).Text
-		raw := strings.Split(text, "#")
+		raw := strings.Split(string(text[:]), "#")
 		hsv := color.HextoHSV(color.Hex(raw[1]))
 
 		darkHSV := hsv
@@ -215,7 +226,7 @@ func hCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 		}
 		setColorValues(darkHSV, darkHBlock, darkHText, lightHSV, lightHBlock, lightHText)
 
-		colorInfo[colorPageIndex].table.SetSelectedStyle(-1, tcell.ColorGray, tcell.AttrNone)
+		colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorGray, tcell.AttrNone)
 	}
 
 	return event
@@ -228,7 +239,7 @@ func colorPageCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 		if colorPageIndex < len(colorInfo)-1 {
 			colorPageIndex++
 
-			colorInfo[colorPageIndex].table.SetSelectedStyle(-1, tcell.ColorGray, tcell.AttrNone)
+			colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorGray, tcell.AttrNone)
 
 			name := colorInfo[colorPageIndex].name
 			colorPageTitle.SetText(name)
@@ -237,7 +248,7 @@ func colorPageCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 			colorPages.SwitchToPage(pageId)
 
 			row, col := colorInfo[colorPageIndex].table.GetSelection()
-			text := colorInfo[colorPageIndex].table.GetCell(row, col).Text
+			text := string(colorInfo[colorPageIndex].table.GetCell(row, col).Text[:])
 			raw := strings.Split(text, "#")
 			hsv := color.HextoHSV(color.Hex(raw[1]))
 
@@ -255,7 +266,7 @@ func colorPageCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 		if colorPageIndex > 0 {
 			colorPageIndex--
 
-			colorInfo[colorPageIndex].table.SetSelectedStyle(-1, tcell.ColorGray, tcell.AttrNone)
+			colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorGray, tcell.AttrNone)
 
 			name := colorInfo[colorPageIndex].name
 			colorPageTitle.SetText(name)
@@ -264,7 +275,7 @@ func colorPageCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 			colorPages.SwitchToPage(pageId)
 
 			row, col := colorInfo[colorPageIndex].table.GetSelection()
-			text := colorInfo[colorPageIndex].table.GetCell(row, col).Text
+			text := string(colorInfo[colorPageIndex].table.GetCell(row, col).Text[:])
 			raw := strings.Split(text, "#")
 			hsv := color.HextoHSV(color.Hex(raw[1]))
 
@@ -288,7 +299,7 @@ func colorPageCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 		lightHSV := color.HSV{col*2 + 1, 100, 100}
 		setColorValues(darkHSV, darkHBlock, darkHText, lightHSV, lightHBlock, lightHText)
 
-		colorInfo[colorPageIndex].table.SetSelectedStyle(-1, -1, tcell.AttrBold)
+		colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorDefault, tcell.AttrBold)
 
 	}
 
@@ -304,36 +315,20 @@ func colorPageMovementHandler(event *tcell.EventKey) *tcell.EventKey {
 	switch {
 	case event.Rune() == 'l' || event.Key() == tcell.KeyRight:
 		row, col := colorInfo[colorPageIndex].table.GetSelection()
-		if col < colorInfo[colorPageIndex].table.GetColumnCount()-4 {
-			cell := colorInfo[colorPageIndex].table.GetCell(row, col+4)
-			if cell.Text != "" {
-				colorInfo[colorPageIndex].table.Select(row, col+4)
+		if col < colorInfo[colorPageIndex].table.GetColumnCount()-1 {
+			cell := colorInfo[colorPageIndex].table.GetCell(row, col+1)
+			if len(cell.Text) == 0 {
+				return nil
 			}
-			return nil
-		}
-
-	case event.Rune() == 'h' || event.Key() == tcell.KeyLeft:
-		row, col := colorInfo[colorPageIndex].table.GetSelection()
-		if col >= 4 {
-			colorInfo[colorPageIndex].table.Select(row, col-4)
-			return nil
 		}
 
 	case event.Rune() == 'j' || event.Key() == tcell.KeyDown:
 		row, col := colorInfo[colorPageIndex].table.GetSelection()
-		if row < colorInfo[colorPageIndex].table.GetRowCount()-4 {
-			cell := colorInfo[colorPageIndex].table.GetCell(row+4, col)
-			if cell.Text != "" {
-				colorInfo[colorPageIndex].table.Select(row+4, col)
+		if row < colorInfo[colorPageIndex].table.GetRowCount()-1 {
+			cell := colorInfo[colorPageIndex].table.GetCell(row+1, col)
+			if len(cell.Text) == 0 {
+				return nil
 			}
-			return nil
-		}
-
-	case event.Rune() == 'k' || event.Key() == tcell.KeyUp:
-		row, col := colorInfo[colorPageIndex].table.GetSelection()
-		if row > 0 {
-			colorInfo[colorPageIndex].table.Select(row-4, col)
-			return nil
 		}
 
 	case event.Rune() == 'G':
@@ -341,10 +336,10 @@ func colorPageMovementHandler(event *tcell.EventKey) *tcell.EventKey {
 		col := colorInfo[colorPageIndex].table.GetColumnCount() - 1
 		for true {
 			cell := colorInfo[colorPageIndex].table.GetCell(row, col)
-			if cell.Text != "" {
+			if len(cell.Text) != 0 {
 				break
 			} else {
-				row -= 4
+				row--
 			}
 		}
 		colorInfo[colorPageIndex].table.Select(row, col)
@@ -366,8 +361,8 @@ func searchInputCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 
 			colorPages.SwitchToPage(fmt.Sprintf("page-%v", searchIndexes[searchIndex][0]))
 			colorPageIndex = searchIndexes[searchIndex][0]
-			colorInfo[colorPageIndex].table.Select(searchIndexes[searchIndex][2]*4, searchIndexes[searchIndex][1]*4)
-			colorInfo[colorPageIndex].table.SetSelectedStyle(-1, tcell.ColorGray, tcell.AttrNone)
+			colorInfo[colorPageIndex].table.Select(searchIndexes[searchIndex][2], searchIndexes[searchIndex][1])
+			colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorGray, tcell.AttrNone)
 
 		// Go forward a selection
 		case 'N':
@@ -378,8 +373,8 @@ func searchInputCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 
 			colorPages.SwitchToPage(fmt.Sprintf("page-%v", searchIndexes[searchIndex][0]))
 			colorPageIndex = searchIndexes[searchIndex][0]
-			colorInfo[colorPageIndex].table.Select(searchIndexes[searchIndex][2]*4, searchIndexes[searchIndex][1]*4)
-			colorInfo[colorPageIndex].table.SetSelectedStyle(-1, tcell.ColorGray, tcell.AttrNone)
+			colorInfo[colorPageIndex].table.Select(searchIndexes[searchIndex][2], searchIndexes[searchIndex][1])
+			colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorGray, tcell.AttrNone)
 		}
 	}
 
@@ -389,12 +384,15 @@ func searchInputCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 // Screen setup -----------------------------------------------------------
 
 func hScreenSetup() {
-	darkHBlock.SetText(colorBlock)
-	lightHBlock.SetText(colorBlock)
-
 	// Dark color value setup
 	darkText := cview.NewTextView()
+	darkText.SetScrollBarVisibility(cview.ScrollBarNever)
 	darkText.SetText("Dark Tint Color")
+
+	darkHBlock.SetText(colorBlock)
+	darkHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
+
+	darkHText.SetScrollBarVisibility(cview.ScrollBarNever)
 
 	darkColorFlex := cview.NewFlex()
 	darkColorFlex.SetDirection(cview.FlexRow)
@@ -404,7 +402,13 @@ func hScreenSetup() {
 
 	// Light color value setup
 	lightText := cview.NewTextView()
+	lightText.SetScrollBarVisibility(cview.ScrollBarNever)
 	lightText.SetText("Light Tint Color")
+
+	lightHBlock.SetText(colorBlock)
+	lightHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
+
+	lightHText.SetScrollBarVisibility(cview.ScrollBarNever)
 
 	lightColorFlex := cview.NewFlex()
 	lightColorFlex.SetDirection(cview.FlexRow)
@@ -450,7 +454,8 @@ func svScreenSetup() {
 	darkTitle := cview.NewTextView()
 	darkTitle.SetText("  Dark Tint Color")
 
-	darkSVFlex := cview.NewFlex().SetDirection(cview.FlexRow)
+	darkSVFlex := cview.NewFlex()
+	darkSVFlex.SetDirection(cview.FlexRow)
 	darkSVFlex.AddItem(darkTitle, 0, 1, false)
 	darkSVFlex.AddItem(darkSVBlock, 0, 2, false)
 	darkSVFlex.AddItem(darkSVText, 0, 9, false)
@@ -458,12 +463,14 @@ func svScreenSetup() {
 	lightTitle := cview.NewTextView()
 	lightTitle.SetText("  Light Tint Color")
 
-	lightSVFlex := cview.NewFlex().SetDirection(cview.FlexRow)
+	lightSVFlex := cview.NewFlex()
+	lightSVFlex.SetDirection(cview.FlexRow)
 	lightSVFlex.AddItem(lightTitle, 0, 1, false)
 	lightSVFlex.AddItem(lightSVBlock, 0, 2, false)
 	lightSVFlex.AddItem(lightSVText, 0, 9, false)
 
-	colorFlex := cview.NewFlex().SetDirection(cview.FlexRow)
+	colorFlex := cview.NewFlex()
+	colorFlex.SetDirection(cview.FlexRow)
 	colorFlex.AddItem(darkSVFlex, 0, 1, false)
 	colorFlex.AddItem(lightSVFlex, 0, 1, false)
 
@@ -503,7 +510,7 @@ func searchInputSetup() {
 		}
 	}
 
-	searchInput.SetLabel("Enter a color name or hex value to search for: ")
+	searchInput.SetLabel("Enter a color name or value to search for: ")
 	searchInput.SetFieldWidth(60)
 
 	searchInput.SetDoneFunc(searchInputDoneFunc)
@@ -524,7 +531,7 @@ func searchInputDoneFunc(key tcell.Key) {
 	switch key {
 	// Go back to the main application
 	case tcell.KeyEscape:
-		hFlex.RemoveItem(searchFlex)
+		pages.SwitchToPage("Hue page")
 		colorInfo[colorPageIndex].table.Select(0, 0)
 		app.SetFocus(colorPages)
 
@@ -651,14 +658,14 @@ func parseSearchText(text string) {
 		locations := getColorLocations(text)
 		searchIndexes = locations
 
-		hFlex.RemoveItem(searchFlex)
+		pages.SwitchToPage("Hue page")
 		app.SetFocus(colorPages)
 
 		if len(locations) > 0 {
 			colorPages.SwitchToPage(fmt.Sprintf("page-%v", locations[0][0]))
 			colorPageIndex = locations[0][0]
-			colorInfo[colorPageIndex].table.Select(locations[0][2]*4, locations[0][1]*4)
-			colorInfo[colorPageIndex].table.SetSelectedStyle(-1, tcell.ColorGray, tcell.AttrNone)
+			colorInfo[colorPageIndex].table.Select(locations[0][2], locations[0][1])
+			colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorGray, tcell.AttrNone)
 		}
 
 		searchInput.SetText("")
@@ -676,7 +683,6 @@ func parseSearchText(text string) {
 	drawSVTable()
 	svTable.Select(int(math.Round(50-float64(hsv.V/2))), hsv.S)
 
-	hFlex.RemoveItem(searchFlex)
 	pages.SwitchToPage("Saturation-Value page")
 	app.SetFocus(svTable)
 
@@ -686,7 +692,7 @@ func parseSearchText(text string) {
 
 }
 
-func searchInputAutocompleteFunc(currentText string) []string {
+func searchInputAutocompleteFunc(currentText string) []*cview.ListItem {
 	if len(currentText) == 0 {
 		return nil
 	}
@@ -706,7 +712,14 @@ func searchInputAutocompleteFunc(currentText string) []string {
 	} else if len(entries) == 1 && currentText == entries[0] {
 		entries = nil
 	}
-	return entries
+
+	// Convert strings to list items
+	var items []*cview.ListItem
+	for _, v := range entries {
+		items = append(items, cview.NewListItem(v))
+	}
+
+	return items
 }
 
 // Color pages setup ------------------------------------------------------
@@ -733,8 +746,10 @@ func colorPageSetup() {
 		}
 
 		colorInfo[i].table = cview.NewTable()
+		colorInfo[i].table.SetCellPadding(3, 0)
+		colorInfo[i].table.SetScrollBarVisibility(cview.ScrollBarNever)
 		colorInfo[i].table.SetSelectable(true, true)
-		colorInfo[i].table.SetSelectedStyle(-1, -1, tcell.AttrBold)
+		colorInfo[i].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorDefault, tcell.AttrBold)
 		colorInfo[i].table.SetDoneFunc(colorPageDoneFunc)
 		colorInfo[i].table.SetSelectedFunc(colorPageSelectedFunc)
 		colorInfo[i].table.SetSelectionChangedFunc(colorPageSelectionChangedFunc)
@@ -750,18 +765,26 @@ func colorPageSetup() {
 
 				// Draw the color if it can actually be seen
 				if colorInfo[colorIndex].colors[x*9+y].NAME == "" {
-					cell := cview.NewTableCell("").SetTextColor(0)
-					colorInfo[colorIndex].table.SetCell(y*4, x*4, cell)
+					cell := cview.NewTableCell("")
+					cell.SetTextColor(0)
+
+					colorInfo[colorIndex].table.SetCell(y, x, cell)
 				} else if rgb.R+rgb.G+rgb.B > 84 {
 					text := fmt.Sprintf(colorPageText, name, val)
 					c := tcell.NewHexColor(int32(color.HextoDecimal(color.Hex(val))))
-					cell := cview.NewTableCell(text).SetTextColor(c)
-					colorInfo[colorIndex].table.SetCell(y*4, x*4, cell)
+
+					cell := cview.NewTableCell(text)
+					cell.SetTextColor(c)
+
+					colorInfo[colorIndex].table.SetCell(y, x, cell)
 				} else {
 					text := fmt.Sprintf("██████████  [white]%v  %v  ", name, val)
 					c := tcell.NewHexColor(int32(color.HextoDecimal(color.Hex(val))))
-					cell := cview.NewTableCell(text).SetTextColor(c)
-					colorInfo[colorIndex].table.SetCell(y*4, x*4, cell)
+
+					cell := cview.NewTableCell(text)
+					cell.SetTextColor(c)
+
+					colorInfo[colorIndex].table.SetCell(y, x, cell)
 				}
 			}
 		}
@@ -798,7 +821,7 @@ func colorPageSelectedFunc(row int, column int) {
 
 	// Get the color displayed in the table
 	text := colorInfo[colorPageIndex].table.GetCell(row, column).Text
-	raw := strings.Split(text, "#")
+	raw := strings.Split(string(text[:]), "#")
 	hsv := color.HextoHSV(color.Hex(raw[1]))
 	cursor := color.HSVtoRGB(color.HSV{(hsv.H + 180) % 360, 100, 100})
 	c := tcell.NewRGBColor(int32(cursor.R), int32(cursor.G), int32(cursor.B))
@@ -820,7 +843,7 @@ func colorPageSelectedFunc(row int, column int) {
 func colorPageSelectionChangedFunc(row int, column int) {
 	// Get the color from the table
 	text := colorInfo[colorPageIndex].table.GetCell(row, column).Text
-	raw := strings.Split(text, "#")
+	raw := strings.Split(string(text[:]), "#")
 	hsv := color.HextoHSV(color.Hex(raw[1]))
 
 	// Fill the color format string with the correct values for the selected
@@ -843,7 +866,7 @@ func hTableSetup() {
 	hTable.SetSelectable(true, true)
 	hTable.Select(0, 0)
 	hTable.SetSelectedStyle(tcell.ColorWhite, tcell.ColorWhite, tcell.AttrNone)
-	hTable.SetSpacing(false)
+	hTable.SetCellPadding(0, 0)
 
 	// Color the hue table
 	for h := 0; h < 360; h += 2 {
@@ -851,7 +874,11 @@ func hTableSetup() {
 		fg := color.HSVtoRGB(color.HSV{h, 100, 100})
 		bc := tcell.NewRGBColor(int32(bg.R), int32(bg.G), int32(bg.B))
 		c := tcell.NewRGBColor(int32(fg.R), int32(fg.G), int32(fg.B))
-		hTable.SetCell(0, h/2, cview.NewTableCell("▐").SetBackgroundColor(bc).SetTextColor(c))
+
+		cell := cview.NewTableCell("▐")
+		cell.SetBackgroundColor(bc)
+		cell.SetTextColor(c)
+		hTable.SetCell(0, h/2, cell)
 	}
 
 	hTable.SetDoneFunc(hTableDoneFunc)
@@ -901,10 +928,10 @@ func hTableSelectionChangedFunc(row int, column int) {
 func svTableSetup() {
 	drawSVTable()
 
+	// 16842751 is cyan which makes the cursor stand out on red table
 	svTable.SetSelectedStyle(16842751, 16842751, tcell.AttrNone)
 	svTable.SetSelectable(true, true)
-	svTable.SetSpacing(false)
-	// 16842751 is cyan which makes the cursor stand out on red table
+	svTable.SetCellPadding(0, 0)
 	svTable.Select(0, 100)
 
 	svTable.SetDoneFunc(svTableDoneFunc)
@@ -956,7 +983,7 @@ func svTableSelectionChangedFunc(row int, column int) {
 	setColorValues(darkHSV, darkSVBlock, darkSVText, lightHSV, lightSVBlock, lightSVText)
 }
 
-// Other useful functions -------------------------------------------------
+// Helper functions ---------------------------------------------------
 
 func drawSVTable() {
 	// Draw the table with the correct hue
@@ -1032,8 +1059,7 @@ func setColorValues(darkHSV color.HSV, darkBlock *cview.TextView, darkText *cvie
 }
 
 func getColorName(hsv color.HSV, altHSV color.HSV) string {
-	// If one of the preset colors is equal to the selected hsv, return the
-	// name
+	// If one of the preset colors is equal to the selected hsv, return the name
 	var h color.HSV
 	for i := 0; i < len(colorInfo); i++ {
 		for _, c := range colorInfo[i].colors {
@@ -1126,7 +1152,7 @@ func showHelp() {
 }
 
 func showSearch() {
-	hFlex.AddItem(searchFlex, 100, 1, false)
+	pages.SwitchToPage("Search page")
 	app.SetFocus(searchInput)
 }
 
@@ -1161,6 +1187,7 @@ func Start(sandbox bool, testing bool) (ColorValues, error) {
 
 	pages.AddPage("Hue page", hFlex, true, true)
 	pages.AddPage("Saturation-Value page", svFlex, true, false)
+	pages.AddPage("Search page", searchFlex, true, false)
 
 	hTableSetup()
 	svTableSetup()
@@ -1172,7 +1199,8 @@ func Start(sandbox bool, testing bool) (ColorValues, error) {
 	svScreenSetup()
 
 	if !globalSettings.Testing {
-		if err := app.SetRoot(pages, true).Run(); err != nil {
+		app.SetRoot(pages, true)
+		if err := app.Run(); err != nil {
 			log.Fatal(err)
 			panic(err)
 		}

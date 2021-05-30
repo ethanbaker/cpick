@@ -4,9 +4,9 @@ package cpick
 import (
 	"fmt"
 
-	"github.com/gdamore/tcell"
-	"github.com/ethanbaker/colors"
+	color "github.com/ethanbaker/colors"
 	"github.com/ethanbaker/cpick/cview"
+	"github.com/gdamore/tcell/v2"
 )
 
 //TODO: make testing for new search index
@@ -66,11 +66,11 @@ func testColorPages() error {
 
 	// Test selected function
 	colorPageSelectedFunc(0, 0)
-	colorPageSelectedFunc(0, 12)
+	colorPageSelectedFunc(0, 3)
 
 	// Test selection changed function
 	for i := 0; i < len(colorInfo); i++ {
-		colorInfo[i].table.Select(4, 4)
+		colorInfo[i].table.Select(1, 1)
 	}
 
 	// Test capture handler
@@ -118,13 +118,14 @@ func testColorPages() error {
 // Test capture handler
 func testColorPageCaptureHandler() error {
 	var eventRunes = [...]rune{'C', 'c', 'C', 'c', ' ', 'n', 'N'}
+
 	for i, v := range eventRunes {
 		setEvent := simEvent(dk, v, dm)
 		returnEvent := colorPageCaptureHandler(setEvent)
 
 		switch i {
 		case 0:
-			colorInfo[colorPageIndex].table.Select(12, 4)
+			colorInfo[colorPageIndex].table.Select(3, 1)
 		case 1:
 			colorInfo[colorPageIndex].table.Select(0, 0)
 		}
@@ -143,7 +144,7 @@ func testColorPageCaptureHandler() error {
 		}
 	}
 
-	colorInfo[0].table.Select(4, 4)
+	colorInfo[0].table.Select(1, 1)
 	for _, v := range movementKeys {
 		setEvent := simEvent(v, dr, dm)
 		returnEvent := colorPageCaptureHandler(setEvent)
@@ -180,7 +181,7 @@ func testHTable() error {
 			return fmt.Errorf(fmt.Sprintf("Error! hCaptureHandler(%v) is not properly returning event!\nOutput: %v\n", setEvent, returnEvent))
 		}
 
-		colorInfo[0].table.Select(0, 4)
+		colorInfo[0].table.Select(0, 1)
 	}
 
 	return nil

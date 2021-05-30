@@ -3,7 +3,7 @@ package cview
 import (
 	"fmt"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Example of an application with multiple layouts.
@@ -12,16 +12,24 @@ func ExampleNewApplication() {
 	app := NewApplication()
 
 	// Create shared TextView.
-	sharedTextView := NewTextView().SetText("Widgets may be re-used between multiple layouts.").SetTextAlign(AlignCenter)
+	sharedTextView := NewTextView()
+	sharedTextView.SetTextAlign(AlignCenter)
+	sharedTextView.SetText("Widgets may be re-used between multiple layouts.")
 
 	// Create main layout using Grid.
-	mainTextView := NewTextView().SetText("This is mainLayout.\n\nPress <Tab> to view aboutLayout.").SetTextAlign(AlignCenter)
+	mainTextView := NewTextView()
+	mainTextView.SetTextAlign(AlignCenter)
+	mainTextView.SetText("This is mainLayout.\n\nPress <Tab> to view aboutLayout.")
+
 	mainLayout := NewGrid()
 	mainLayout.AddItem(mainTextView, 0, 0, 1, 1, 0, 0, false)
 	mainLayout.AddItem(sharedTextView, 1, 0, 1, 1, 0, 0, false)
 
 	// Create about layout using Grid.
-	aboutTextView := NewTextView().SetText("cview muti-layout application example\n\nhttps://gitlab.com/tslocum/cview").SetTextAlign(AlignCenter)
+	aboutTextView := NewTextView()
+	aboutTextView.SetTextAlign(AlignCenter)
+	aboutTextView.SetText("cview muti-layout application example\n\nhttps://gitlab.com/tslocum/cview")
+
 	aboutLayout := NewGrid()
 	aboutLayout.AddItem(aboutTextView, 0, 0, 1, 1, 0, 0, false)
 	aboutLayout.AddItem(sharedTextView, 1, 0, 1, 1, 0, 0, false)
@@ -53,7 +61,8 @@ func ExampleNewApplication() {
 	})
 
 	// Run the application.
-	if err := app.SetRoot(mainLayout, true).Run(); err != nil {
+	app.SetRoot(mainLayout, true)
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }
@@ -70,7 +79,8 @@ func ExampleApplication_EnableMouse() {
 	app.SetDoubleClickInterval(StandardDoubleClick)
 
 	// Create a textview.
-	tv := NewTextView().SetText("Click somewhere!")
+	tv := NewTextView()
+	tv.SetText("Click somewhere!")
 
 	// Set a mouse capture function which prints where the mouse was clicked.
 	app.SetMouseCapture(func(event *tcell.EventMouse, action MouseAction) (*tcell.EventMouse, MouseAction) {
@@ -93,7 +103,8 @@ func ExampleApplication_EnableMouse() {
 	})
 
 	// Run the application.
-	if err := app.SetRoot(tv, true).Run(); err != nil {
+	app.SetRoot(tv, true)
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }

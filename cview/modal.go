@@ -3,21 +3,22 @@ package cview
 import (
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Modal is a centered message window used to inform the user or prompt them
 // for an immediate decision. It needs to have at least one button (added via
-// AddButtons()) or it will never disappear.
-//
-// See https://gitlab.com/tslocum/cview/wiki/Modal for an example.
+// AddButtons) or it will never disappear. You may change the title and
+// appearance of the window by modifying the Frame returned by GetFrame. You
+// may include additional elements within the window by modifying the Form
+// returned by GetForm.
 type Modal struct {
 	*Box
 
-	// The frame embedded in the modal.
+	// The Frame embedded in the Modal.
 	frame *Frame
 
-	// The form embedded in the modal's frame.
+	// The Form embedded in the Modal's Frame.
 	form *Form
 
 	// The message text (original, not word-wrapped).
@@ -30,96 +31,112 @@ type Modal struct {
 	// receives the index of the clicked button and the button's label.
 	done func(buttonIndex int, buttonLabel string)
 
-	sync.Mutex
+	sync.RWMutex
 }
 
-// NewModal returns a new modal message window.
+// NewModal returns a new centered message window.
 func NewModal() *Modal {
 	m := &Modal{
 		Box:       NewBox(),
 		textColor: Styles.PrimaryTextColor,
 	}
-	m.form = NewForm().
-		SetButtonsAlign(AlignCenter).
-		SetButtonBackgroundColor(Styles.PrimitiveBackgroundColor).
-		SetButtonTextColor(Styles.PrimaryTextColor)
-	m.form.SetBackgroundColor(Styles.ContrastBackgroundColor).SetBorderPadding(0, 0, 0, 0)
+
+	m.form = NewForm()
+	m.form.SetButtonsAlign(AlignCenter)
+	m.form.SetButtonBackgroundColor(Styles.PrimitiveBackgroundColor)
+	m.form.SetButtonTextColor(Styles.PrimaryTextColor)
+	m.form.SetBackgroundColor(Styles.ContrastBackgroundColor)
+	m.form.SetPadding(0, 0, 0, 0)
 	m.form.SetCancelFunc(func() {
 		if m.done != nil {
 			m.done(-1, "")
 		}
 	})
-	m.frame = NewFrame(m.form).SetBorders(0, 0, 1, 0, 0, 0)
-	m.frame.SetBorder(true).
-		SetBackgroundColor(Styles.ContrastBackgroundColor).
-		SetBorderPadding(1, 1, 1, 1)
+
+	m.frame = NewFrame(m.form)
+	m.frame.SetBorder(true)
+	m.frame.SetBorders(0, 0, 1, 0, 0, 0)
+	m.frame.SetBackgroundColor(Styles.ContrastBackgroundColor)
+	m.frame.SetPadding(1, 1, 1, 1)
+
 	m.focus = m
 	return m
 }
 
-// SetBackgroundColor sets the color of the modal frame background.
-func (m *Modal) SetBackgroundColor(color tcell.Color) *Modal {
+// SetBackgroundColor sets the color of the Modal Frame background.
+func (m *Modal) SetBackgroundColor(color tcell.Color) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.form.SetBackgroundColor(color)
 	m.frame.SetBackgroundColor(color)
-	return m
 }
 
 // SetTextColor sets the color of the message text.
-func (m *Modal) SetTextColor(color tcell.Color) *Modal {
+func (m *Modal) SetTextColor(color tcell.Color) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.textColor = color
-	return m
 }
 
 // SetButtonBackgroundColor sets the background color of the buttons.
-func (m *Modal) SetButtonBackgroundColor(color tcell.Color) *Modal {
+func (m *Modal) SetButtonBackgroundColor(color tcell.Color) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.form.SetButtonBackgroundColor(color)
-	return m
 }
 
 // SetButtonTextColor sets the color of the button texts.
-func (m *Modal) SetButtonTextColor(color tcell.Color) *Modal {
+func (m *Modal) SetButtonTextColor(color tcell.Color) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.form.SetButtonTextColor(color)
-	return m
 }
 
 // SetDoneFunc sets a handler which is called when one of the buttons was
 // pressed. It receives the index of the button as well as its label text. The
 // handler is also called when the user presses the Escape key. The index will
-// then be negative and the label text an emptry string.
-func (m *Modal) SetDoneFunc(handler func(buttonIndex int, buttonLabel string)) *Modal {
+// then be negative and the label text an empty string.
+func (m *Modal) SetDoneFunc(handler func(buttonIndex int, buttonLabel string)) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.done = handler
-	return m
 }
 
 // SetText sets the message text of the window. The text may contain line
 // breaks. Note that words are wrapped, too, based on the final size of the
 // window.
-func (m *Modal) SetText(text string) *Modal {
+func (m *Modal) SetText(text string) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.text = text
-	return m
+}
+
+// GetForm returns the Form embedded in the window. The returned Form may be
+// modified to include additional elements (e.g. AddInputField, AddFormItem).
+func (m *Modal) GetForm() *Form {
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.form
+}
+
+// GetFrame returns the Frame embedded in the window.
+func (m *Modal) GetFrame() *Frame {
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.frame
 }
 
 // AddButtons adds buttons to the window. There must be at least one button and
 // a "done" handler so the window can be closed again.
-func (m *Modal) AddButtons(labels []string) *Modal {
+func (m *Modal) AddButtons(labels []string) {
 	m.Lock()
 	defer m.Unlock()
 
@@ -142,25 +159,22 @@ func (m *Modal) AddButtons(labels []string) *Modal {
 			})
 		}(index, label)
 	}
-	return m
 }
 
 // ClearButtons removes all buttons from the window.
-func (m *Modal) ClearButtons() *Modal {
+func (m *Modal) ClearButtons() {
 	m.Lock()
 	defer m.Unlock()
 
 	m.form.ClearButtons()
-	return m
 }
 
 // SetFocus shifts the focus to the button with the given index.
-func (m *Modal) SetFocus(index int) *Modal {
+func (m *Modal) SetFocus(index int) {
 	m.Lock()
 	defer m.Unlock()
 
 	m.form.SetFocus(index)
-	return m
 }
 
 // Focus is called when this primitive receives focus.
@@ -170,21 +184,24 @@ func (m *Modal) Focus(delegate func(p Primitive)) {
 
 // HasFocus returns whether or not this primitive has focus.
 func (m *Modal) HasFocus() bool {
-	m.Lock()
-	defer m.Unlock()
-
-	return m.form.HasFocus()
+	return m.GetForm().HasFocus()
 }
 
 // Draw draws this primitive onto the screen.
 func (m *Modal) Draw(screen tcell.Screen) {
+	if !m.GetVisible() {
+		return
+	}
+
+	formItemCount := m.form.GetFormItemCount()
+
 	m.Lock()
 	defer m.Unlock()
 
-	// Calculate the width of this modal.
+	// Calculate the width of this Modal.
 	buttonsWidth := 0
 	for _, button := range m.form.buttons {
-		buttonsWidth += TaggedStringWidth(button.label) + 4 + 2
+		buttonsWidth += TaggedTextWidth(button.label) + 4 + 2
 	}
 	buttonsWidth -= 2
 	screenWidth, screenHeight := screen.Size()
@@ -201,8 +218,8 @@ func (m *Modal) Draw(screen tcell.Screen) {
 		m.frame.AddText(line, true, AlignCenter, m.textColor)
 	}
 
-	// Set the modal's position and size.
-	height := len(lines) + 6
+	// Set the Modal's position and size.
+	height := len(lines) + (formItemCount * 2) + 6
 	width += 4
 	x := (screenWidth - width) / 2
 	y := (screenHeight - height) / 2

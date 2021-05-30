@@ -3,26 +3,33 @@ package cview
 import (
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Box is the base Primitive for all widgets. It has a background color and
 // optional surrounding elements such as a border and a title. It does not have
 // inner text. Widgets embed Box and draw their text over it.
-//
-// See demos/box for an example.
 type Box struct {
 	// The position of the rect.
 	x, y, width, height int
 
+	// Padding.
+	paddingTop, paddingBottom, paddingLeft, paddingRight int
+
 	// The inner rect reserved for the box's content.
 	innerX, innerY, innerWidth, innerHeight int
 
-	// Border padding.
-	paddingTop, paddingBottom, paddingLeft, paddingRight int
+	// Whether or not the box is visible.
+	visible bool
+
+	// The border color when the box has focus.
+	borderColorFocused tcell.Color
 
 	// The box's background color.
 	backgroundColor tcell.Color
+
+	// Whether or not the box's background is transparent.
+	backgroundTransparent bool
 
 	// Whether or not a border is drawn, reducing the box's space for content by
 	// two in width and height.
@@ -35,7 +42,7 @@ type Box struct {
 	borderAttributes tcell.AttrMask
 
 	// The title. Only visible if there is a border, too.
-	title string
+	title []byte
 
 	// The color of the title.
 	titleColor tcell.Color
@@ -72,26 +79,65 @@ type Box struct {
 // NewBox returns a Box without a border.
 func NewBox() *Box {
 	b := &Box{
-		width:           15,
-		height:          10,
-		innerX:          -1, // Mark as uninitialized.
-		backgroundColor: Styles.PrimitiveBackgroundColor,
-		borderColor:     Styles.BorderColor,
-		titleColor:      Styles.TitleColor,
-		titleAlign:      AlignCenter,
-		showFocus:       true,
+		width:              15,
+		height:             10,
+		visible:            true,
+		backgroundColor:    Styles.PrimitiveBackgroundColor,
+		borderColor:        Styles.BorderColor,
+		titleColor:         Styles.TitleColor,
+		borderColorFocused: ColorUnset,
+		titleAlign:         AlignCenter,
+		showFocus:          true,
 	}
 	b.focus = b
+	b.updateInnerRect()
 	return b
 }
 
-// SetBorderPadding sets the size of the borders around the box content.
-func (b *Box) SetBorderPadding(top, bottom, left, right int) *Box {
+func (b *Box) updateInnerRect() {
+	x, y, width, height := b.x, b.y, b.width, b.height
+
+	// Subtract border space
+	if b.border {
+		x++
+		y++
+		width -= 2
+		height -= 2
+	}
+
+	// Subtract padding
+	x, y, width, height =
+		x+b.paddingLeft,
+		y+b.paddingTop,
+		width-b.paddingLeft-b.paddingRight,
+		height-b.paddingTop-b.paddingBottom
+
+	if width < 0 {
+		width = 0
+	}
+	if height < 0 {
+		height = 0
+	}
+
+	b.innerX, b.innerY, b.innerWidth, b.innerHeight = x, y, width, height
+}
+
+// GetPadding returns the size of the padding around the box content.
+func (b *Box) GetPadding() (top, bottom, left, right int) {
+	b.l.RLock()
+	defer b.l.RUnlock()
+
+	return b.paddingTop, b.paddingBottom, b.paddingLeft, b.paddingRight
+}
+
+// SetPadding sets the size of the padding around the box content.
+func (b *Box) SetPadding(top, bottom, left, right int) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.paddingTop, b.paddingBottom, b.paddingLeft, b.paddingRight = top, bottom, left, right
-	return b
+
+	b.updateInnerRect()
 }
 
 // GetRect returns the current position of the rectangle, x, y, width, and
@@ -108,32 +154,9 @@ func (b *Box) GetRect() (int, int, int, int) {
 // will clamp to 0 and thus never be negative.
 func (b *Box) GetInnerRect() (int, int, int, int) {
 	b.l.RLock()
-	if b.innerX >= 0 {
-		defer b.l.RUnlock()
-		return b.innerX, b.innerY, b.innerWidth, b.innerHeight
-	}
-	b.l.RUnlock()
+	defer b.l.RUnlock()
 
-	x, y, width, height := b.GetRect()
-	b.l.RLock()
-	if b.border {
-		x++
-		y++
-		width -= 2
-		height -= 2
-	}
-	x, y, width, height = x+b.paddingLeft,
-		y+b.paddingTop,
-		width-b.paddingLeft-b.paddingRight,
-		height-b.paddingTop-b.paddingBottom
-	if width < 0 {
-		width = 0
-	}
-	if height < 0 {
-		height = 0
-	}
-	b.l.RUnlock()
-	return x, y, width, height
+	return b.innerX, b.innerY, b.innerWidth, b.innerHeight
 }
 
 // SetRect sets a new position of the primitive. Note that this has no effect
@@ -145,11 +168,25 @@ func (b *Box) SetRect(x, y, width, height int) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	b.x = x
-	b.y = y
-	b.width = width
-	b.height = height
-	b.innerX = -1 // Mark inner rect as uninitialized.
+	b.x, b.y, b.width, b.height = x, y, width, height
+
+	b.updateInnerRect()
+}
+
+// SetVisible sets the flag indicating whether or not the box is visible.
+func (b *Box) SetVisible(v bool) {
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	b.visible = v
+}
+
+// GetVisible returns a value indicating whether or not the box is visible.
+func (b *Box) GetVisible() bool {
+	b.l.RLock()
+	defer b.l.RUnlock()
+
+	return b.visible
 }
 
 // SetDrawFunc sets a callback function which is invoked after the box primitive
@@ -160,12 +197,11 @@ func (b *Box) SetRect(x, y, width, height int) {
 // must return the box's inner dimensions (x, y, width, height) which will be
 // returned by GetInnerRect(), used by descendent primitives to draw their own
 // content.
-func (b *Box) SetDrawFunc(handler func(screen tcell.Screen, x, y, width, height int) (int, int, int, int)) *Box {
+func (b *Box) SetDrawFunc(handler func(screen tcell.Screen, x, y, width, height int) (int, int, int, int)) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.draw = handler
-	return b
 }
 
 // GetDrawFunc returns the callback function which was installed with
@@ -215,12 +251,11 @@ func (b *Box) InputHandler() func(event *tcell.EventKey, setFocus func(p Primiti
 // can have focus at a time. Composing primitives such as Form pass the focus on
 // to their contained primitives and thus never receive any key events
 // themselves. Therefore, they cannot intercept key events.
-func (b *Box) SetInputCapture(capture func(event *tcell.EventKey) *tcell.EventKey) *Box {
+func (b *Box) SetInputCapture(capture func(event *tcell.EventKey) *tcell.EventKey) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.inputCapture = capture
-	return b
 }
 
 // GetInputCapture returns the function installed with SetInputCapture() or nil
@@ -268,9 +303,8 @@ func (b *Box) MouseHandler() func(action MouseAction, event *tcell.EventMouse, s
 // called.
 //
 // Providing a nil handler will remove a previously existing handler.
-func (b *Box) SetMouseCapture(capture func(action MouseAction, event *tcell.EventMouse) (MouseAction, *tcell.EventMouse)) *Box {
+func (b *Box) SetMouseCapture(capture func(action MouseAction, event *tcell.EventMouse) (MouseAction, *tcell.EventMouse)) {
 	b.mouseCapture = capture
-	return b
 }
 
 // InRect returns true if the given coordinate is within the bounds of the box's
@@ -287,52 +321,84 @@ func (b *Box) GetMouseCapture() func(action MouseAction, event *tcell.EventMouse
 }
 
 // SetBackgroundColor sets the box's background color.
-func (b *Box) SetBackgroundColor(color tcell.Color) *Box {
+func (b *Box) SetBackgroundColor(color tcell.Color) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.backgroundColor = color
-	return b
+}
+
+// GetBackgroundColor returns the box's background color.
+func (b *Box) GetBackgroundColor() tcell.Color {
+	b.l.RLock()
+	defer b.l.RUnlock()
+	return b.backgroundColor
+}
+
+// SetBackgroundTransparent sets the flag indicating whether or not the box's
+// background is transparent. The screen is not cleared before drawing the
+// application. Overlaying transparent widgets directly onto the screen may
+// result in artifacts. To resolve this, add a blank, non-transparent Box to
+// the bottom layer of the interface via Panels, or set a handler via
+// SetBeforeDrawFunc which clears the screen.
+func (b *Box) SetBackgroundTransparent(transparent bool) {
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	b.backgroundTransparent = transparent
+}
+
+// GetBorder returns a value indicating whether the box have a border
+// or not.
+func (b *Box) GetBorder() bool {
+	b.l.RLock()
+	defer b.l.RUnlock()
+	return b.border
 }
 
 // SetBorder sets the flag indicating whether or not the box should have a
 // border.
-func (b *Box) SetBorder(show bool) *Box {
+func (b *Box) SetBorder(show bool) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.border = show
-	return b
+
+	b.updateInnerRect()
 }
 
 // SetBorderColor sets the box's border color.
-func (b *Box) SetBorderColor(color tcell.Color) *Box {
+func (b *Box) SetBorderColor(color tcell.Color) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.borderColor = color
-	return b
+}
+
+// SetBorderColorFocused sets the box's border color when the box is focused.
+func (b *Box) SetBorderColorFocused(color tcell.Color) {
+	b.l.Lock()
+	defer b.l.Unlock()
+	b.borderColorFocused = color
 }
 
 // SetBorderAttributes sets the border's style attributes. You can combine
 // different attributes using bitmask operations:
 //
 //   box.SetBorderAttributes(tcell.AttrUnderline | tcell.AttrBold)
-func (b *Box) SetBorderAttributes(attr tcell.AttrMask) *Box {
+func (b *Box) SetBorderAttributes(attr tcell.AttrMask) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.borderAttributes = attr
-	return b
 }
 
 // SetTitle sets the box's title.
-func (b *Box) SetTitle(title string) *Box {
+func (b *Box) SetTitle(title string) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	b.title = title
-	return b
+	b.title = []byte(title)
 }
 
 // GetTitle returns the box's current title.
@@ -340,35 +406,38 @@ func (b *Box) GetTitle() string {
 	b.l.RLock()
 	defer b.l.RUnlock()
 
-	return b.title
+	return string(b.title)
 }
 
 // SetTitleColor sets the box's title color.
-func (b *Box) SetTitleColor(color tcell.Color) *Box {
+func (b *Box) SetTitleColor(color tcell.Color) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.titleColor = color
-	return b
 }
 
 // SetTitleAlign sets the alignment of the title, one of AlignLeft, AlignCenter,
 // or AlignRight.
-func (b *Box) SetTitleAlign(align int) *Box {
+func (b *Box) SetTitleAlign(align int) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
 	b.titleAlign = align
-	return b
 }
 
 // Draw draws this primitive onto the screen.
 func (b *Box) Draw(screen tcell.Screen) {
 	b.l.Lock()
+	defer b.l.Unlock()
+
+	// Don't draw anything if the box is hidden
+	if !b.visible {
+		return
+	}
 
 	// Don't draw anything if there is no space.
 	if b.width <= 0 || b.height <= 0 {
-		b.l.Unlock()
 		return
 	}
 
@@ -376,15 +445,17 @@ func (b *Box) Draw(screen tcell.Screen) {
 
 	// Fill background.
 	background := def.Background(b.backgroundColor)
-	for y := b.y; y < b.y+b.height; y++ {
-		for x := b.x; x < b.x+b.width; x++ {
-			screen.SetContent(x, y, ' ', nil, background)
+	if !b.backgroundTransparent {
+		for y := b.y; y < b.y+b.height; y++ {
+			for x := b.x; x < b.x+b.width; x++ {
+				screen.SetContent(x, y, ' ', nil, background)
+			}
 		}
 	}
 
 	// Draw border.
 	if b.border && b.width >= 2 && b.height >= 2 {
-		border := background.Foreground(b.borderColor) | tcell.Style(b.borderAttributes)
+		border := SetAttributes(background.Foreground(b.borderColor), b.borderAttributes)
 		var vertical, horizontal, topLeft, topRight, bottomLeft, bottomRight rune
 
 		var hasFocus bool
@@ -393,6 +464,11 @@ func (b *Box) Draw(screen tcell.Screen) {
 		} else {
 			hasFocus = b.focus.HasFocus()
 		}
+
+		if hasFocus && b.borderColorFocused != ColorUnset {
+			border = SetAttributes(background.Foreground(b.borderColorFocused), b.borderAttributes)
+		}
+
 		if hasFocus && b.showFocus {
 			horizontal = Borders.HorizontalFocus
 			vertical = Borders.VerticalFocus
@@ -422,55 +498,29 @@ func (b *Box) Draw(screen tcell.Screen) {
 		screen.SetContent(b.x+b.width-1, b.y+b.height-1, bottomRight, nil, border)
 
 		// Draw title.
-		if b.title != "" && b.width >= 4 {
+		if len(b.title) > 0 && b.width >= 4 {
 			printed, _ := Print(screen, b.title, b.x+1, b.y, b.width-2, b.titleAlign, b.titleColor)
 			if len(b.title)-printed > 0 && printed > 0 {
 				_, _, style, _ := screen.GetContent(b.x+b.width-2, b.y)
 				fg, _, _ := style.Decompose()
-				Print(screen, string(SemigraphicsHorizontalEllipsis), b.x+b.width-2, b.y, 1, AlignLeft, fg)
+				Print(screen, []byte(string(SemigraphicsHorizontalEllipsis)), b.x+b.width-2, b.y, 1, AlignLeft, fg)
 			}
 		}
 	}
 
 	// Call custom draw function.
 	if b.draw != nil {
-		b.l.Unlock()
-		newX, newY, newWidth, newHeight := b.draw(screen, b.x, b.y, b.width, b.height)
-		b.l.Lock()
-		b.innerX, b.innerY, b.innerWidth, b.innerHeight = newX, newY, newWidth, newHeight
-	} else {
-		// Remember the inner rect.
-		b.innerX = -1
-		b.l.Unlock()
-		newX, newY, newWidth, newHeight := b.GetInnerRect()
-		b.l.Lock()
-		b.innerX, b.innerY, b.innerWidth, b.innerHeight = newX, newY, newWidth, newHeight
+		b.innerX, b.innerY, b.innerWidth, b.innerHeight = b.draw(screen, b.x, b.y, b.width, b.height)
 	}
+}
 
-	// Clamp inner rect to screen.
-	width, height := screen.Size()
-	if b.innerX < 0 {
-		b.innerWidth += b.innerX
-		b.innerX = 0
-	}
-	if b.innerX+b.innerWidth >= width {
-		b.innerWidth = width - b.innerX
-	}
-	if b.innerY+b.innerHeight >= height {
-		b.innerHeight = height - b.innerY
-	}
-	if b.innerY < 0 {
-		b.innerHeight += b.innerY
-		b.innerY = 0
-	}
-	if b.innerWidth < 0 {
-		b.innerWidth = 0
-	}
-	if b.innerHeight < 0 {
-		b.innerHeight = 0
-	}
+// ShowFocus sets the flag indicating whether or not the borders of this
+// primitive should change thickness when focused.
+func (b *Box) ShowFocus(showFocus bool) {
+	b.l.Lock()
+	defer b.l.Unlock()
 
-	b.l.Unlock()
+	b.showFocus = showFocus
 }
 
 // Focus is called when this primitive receives focus.
@@ -503,4 +553,20 @@ func (b *Box) GetFocusable() Focusable {
 	defer b.l.RUnlock()
 
 	return b.focus
+}
+
+// GetBorderPadding returns the size of the padding around the box content.
+//
+// Deprecated: This function is provided for backwards compatibility.
+// Developers should use GetPadding instead.
+func (b *Box) GetBorderPadding() (top, bottom, left, right int) {
+	return b.GetPadding()
+}
+
+// SetBorderPadding sets the size of the padding around the box content.
+//
+// Deprecated: This function is provided for backwards compatibility.
+// Developers should use SetPadding instead.
+func (b *Box) SetBorderPadding(top, bottom, left, right int) {
+	b.SetPadding(top, bottom, left, right)
 }

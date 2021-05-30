@@ -4,7 +4,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 )
 
 // ProgressBar indicates the progress of an operation.
@@ -33,19 +33,21 @@ type ProgressBar struct {
 	// Progress required to fill the bar.
 	max int
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 // NewProgressBar returns a new progress bar.
 func NewProgressBar() *ProgressBar {
-	return &ProgressBar{
-		Box:         NewBox().SetBackgroundColor(Styles.PrimitiveBackgroundColor),
-		emptyRune:   ' ',
+	p := &ProgressBar{
+		Box:         NewBox(),
+		emptyRune:   tcell.RuneBlock,
 		emptyColor:  Styles.PrimitiveBackgroundColor,
 		filledRune:  tcell.RuneBlock,
 		filledColor: Styles.PrimaryTextColor,
 		max:         100,
 	}
+	p.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
+	return p
 }
 
 // SetEmptyRune sets the rune used for the empty area of the progress bar.
@@ -98,8 +100,8 @@ func (p *ProgressBar) SetMax(max int) {
 
 // GetMax returns the progress required to fill the bar.
 func (p *ProgressBar) GetMax() int {
-	p.Lock()
-	defer p.Unlock()
+	p.RLock()
+	defer p.RUnlock()
 
 	return p.max
 }
@@ -110,6 +112,11 @@ func (p *ProgressBar) AddProgress(progress int) {
 	defer p.Unlock()
 
 	p.progress += progress
+	if p.progress < 0 {
+		p.progress = 0
+	} else if p.progress > p.max {
+		p.progress = p.max
+	}
 }
 
 // SetProgress sets the current progress.
@@ -118,26 +125,35 @@ func (p *ProgressBar) SetProgress(progress int) {
 	defer p.Unlock()
 
 	p.progress = progress
+	if p.progress < 0 {
+		p.progress = 0
+	} else if p.progress > p.max {
+		p.progress = p.max
+	}
 }
 
 // GetProgress gets the current progress.
 func (p *ProgressBar) GetProgress() int {
-	p.Lock()
-	defer p.Unlock()
+	p.RLock()
+	defer p.RUnlock()
 
 	return p.progress
 }
 
 // Complete returns whether the progress bar has been filled.
 func (p *ProgressBar) Complete() bool {
-	p.Lock()
-	defer p.Unlock()
+	p.RLock()
+	defer p.RUnlock()
 
 	return p.progress >= p.max
 }
 
 // Draw draws this primitive onto the screen.
 func (p *ProgressBar) Draw(screen tcell.Screen) {
+	if !p.GetVisible() {
+		return
+	}
+
 	p.Box.Draw(screen)
 
 	p.Lock()

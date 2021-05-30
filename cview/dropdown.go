@@ -4,24 +4,62 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
+	"github.com/mattn/go-runewidth"
 )
 
-// dropDownOption is one option that can be selected in a drop-down primitive.
-type dropDownOption struct {
-	Text     string // The text to be displayed in the drop-down.
-	Selected func() // The (optional) callback for when this option was selected.
+// DropDownOption is one option that can be selected in a drop-down primitive.
+type DropDownOption struct {
+	text      string                                  // The text to be displayed in the drop-down.
+	selected  func(index int, option *DropDownOption) // The (optional) callback for when this option was selected.
+	reference interface{}                             // An optional reference object.
+
+	sync.RWMutex
+}
+
+// NewDropDownOption returns a new option for a dropdown.
+func NewDropDownOption(text string) *DropDownOption {
+	return &DropDownOption{text: text}
+}
+
+// GetText returns the text of this dropdown option.
+func (d *DropDownOption) GetText() string {
+	d.RLock()
+	defer d.RUnlock()
+
+	return d.text
+}
+
+// SetText returns the text of this dropdown option.
+func (d *DropDownOption) SetText(text string) {
+	d.text = text
+}
+
+// SetSelectedFunc sets the handler to be called when this option is selected.
+func (d *DropDownOption) SetSelectedFunc(handler func(index int, option *DropDownOption)) {
+	d.selected = handler
+}
+
+// GetReference returns the reference object of this dropdown option.
+func (d *DropDownOption) GetReference() interface{} {
+	d.RLock()
+	defer d.RUnlock()
+
+	return d.reference
+}
+
+// SetReference allows you to store a reference of any type in this option.
+func (d *DropDownOption) SetReference(reference interface{}) {
+	d.reference = reference
 }
 
 // DropDown implements a selection widget whose options become visible in a
 // drop-down list when activated.
-//
-// See https://gitlab.com/tslocum/cview/wiki/DropDown for an example.
 type DropDown struct {
 	*Box
 
 	// The options from which the user can choose.
-	options []*dropDownOption
+	options []*DropDownOption
 
 	// Strings to be placed before and after each drop-down option.
 	optionPrefix, optionSuffix string
@@ -30,7 +68,7 @@ type DropDown struct {
 	// currently selected.
 	currentOption int
 
-	// Strings to be placed beefore and after the current option.
+	// Strings to be placed before and after the current option.
 	currentOptionPrefix, currentOptionSuffix string
 
 	// The text to be displayed when no option has yet been selected.
@@ -51,11 +89,20 @@ type DropDown struct {
 	// The label color.
 	labelColor tcell.Color
 
+	// The label color when focused.
+	labelColorFocused tcell.Color
+
 	// The background color of the input area.
 	fieldBackgroundColor tcell.Color
 
+	// The background color of the input area when focused.
+	fieldBackgroundColorFocused tcell.Color
+
 	// The text color of the input area.
 	fieldTextColor tcell.Color
+
+	// The text color of the input area when focused.
+	fieldTextColorFocused tcell.Color
 
 	// The color for prefixes.
 	prefixTextColor tcell.Color
@@ -79,10 +126,16 @@ type DropDown struct {
 
 	// A callback function which is called when the user changes the drop-down's
 	// selection.
-	selected func(text string, index int)
+	selected func(index int, option *DropDownOption)
 
 	// Set to true when mouse dragging is in progress.
 	dragging bool
+
+	// The chars to show when the option's text gets shortened.
+	abbreviationChars string
+
+	// The symbol to draw at the end of the field.
+	dropDownSymbol rune
 
 	sync.RWMutex
 }
@@ -90,21 +143,26 @@ type DropDown struct {
 // NewDropDown returns a new drop-down.
 func NewDropDown() *DropDown {
 	list := NewList()
-	list.ShowSecondaryText(false).
-		SetMainTextColor(Styles.PrimitiveBackgroundColor).
-		SetSelectedTextColor(Styles.PrimitiveBackgroundColor).
-		SetSelectedBackgroundColor(Styles.PrimaryTextColor).
-		SetHighlightFullLine(true).
-		SetBackgroundColor(Styles.MoreContrastBackgroundColor)
+	list.ShowSecondaryText(false)
+	list.SetMainTextColor(Styles.PrimitiveBackgroundColor)
+	list.SetSelectedTextColor(Styles.PrimitiveBackgroundColor)
+	list.SetSelectedBackgroundColor(Styles.PrimaryTextColor)
+	list.SetHighlightFullLine(true)
+	list.SetBackgroundColor(Styles.MoreContrastBackgroundColor)
 
 	d := &DropDown{
-		Box:                  NewBox(),
-		currentOption:        -1,
-		list:                 list,
-		labelColor:           Styles.SecondaryTextColor,
-		fieldBackgroundColor: Styles.ContrastBackgroundColor,
-		fieldTextColor:       Styles.PrimaryTextColor,
-		prefixTextColor:      Styles.ContrastSecondaryTextColor,
+		Box:                         NewBox(),
+		currentOption:               -1,
+		list:                        list,
+		labelColor:                  Styles.SecondaryTextColor,
+		fieldBackgroundColor:        Styles.ContrastBackgroundColor,
+		fieldTextColor:              Styles.PrimaryTextColor,
+		prefixTextColor:             Styles.ContrastSecondaryTextColor,
+		dropDownSymbol:              Styles.DropDownSymbol,
+		abbreviationChars:           Styles.DropDownAbbreviationChars,
+		labelColorFocused:           ColorUnset,
+		fieldBackgroundColorFocused: ColorUnset,
+		fieldTextColorFocused:       ColorUnset,
 	}
 
 	d.focus = d
@@ -112,10 +170,18 @@ func NewDropDown() *DropDown {
 	return d
 }
 
+// SetDropDownSymbolRune sets the rune to be drawn at the end of the dropdown field
+// to indicate that this field is a dropdown.
+func (d *DropDown) SetDropDownSymbolRune(symbol rune) {
+	d.Lock()
+	defer d.Unlock()
+	d.dropDownSymbol = symbol
+}
+
 // SetCurrentOption sets the index of the currently selected option. This may
 // be a negative value to indicate that no option is currently selected. Calling
 // this function will also trigger the "selected" callback (if there is one).
-func (d *DropDown) SetCurrentOption(index int) *DropDown {
+func (d *DropDown) SetCurrentOption(index int) {
 	d.Lock()
 	defer d.Unlock()
 
@@ -124,12 +190,12 @@ func (d *DropDown) SetCurrentOption(index int) *DropDown {
 		d.list.SetCurrentItem(index)
 		if d.selected != nil {
 			d.Unlock()
-			d.selected(d.options[index].Text, index)
+			d.selected(index, d.options[index])
 			d.Lock()
 		}
-		if d.options[index].Selected != nil {
+		if d.options[index].selected != nil {
 			d.Unlock()
-			d.options[index].Selected()
+			d.options[index].selected(index, d.options[index])
 			d.Lock()
 		}
 	} else {
@@ -137,24 +203,23 @@ func (d *DropDown) SetCurrentOption(index int) *DropDown {
 		d.list.SetCurrentItem(0) // Set to 0 because -1 means "last item".
 		if d.selected != nil {
 			d.Unlock()
-			d.selected("", -1)
+			d.selected(-1, nil)
 			d.Lock()
 		}
 	}
-	return d
 }
 
 // GetCurrentOption returns the index of the currently selected option as well
-// as its text. If no option was selected, -1 and an empty string is returned.
-func (d *DropDown) GetCurrentOption() (int, string) {
+// as the option itself. If no option was selected, -1 and nil is returned.
+func (d *DropDown) GetCurrentOption() (int, *DropDownOption) {
 	d.RLock()
 	defer d.RUnlock()
 
-	var text string
+	var option *DropDownOption
 	if d.currentOption >= 0 && d.currentOption < len(d.options) {
-		text = d.options[d.currentOption].Text
+		option = d.options[d.currentOption]
 	}
-	return d.currentOption, text
+	return d.currentOption, option
 }
 
 // SetTextOptions sets the text to be placed before and after each drop-down
@@ -162,7 +227,7 @@ func (d *DropDown) GetCurrentOption() (int, string) {
 // selected option (currentPrefix/currentSuffix) as well as the text to be
 // displayed when no option is currently selected. Per default, all of these
 // strings are empty.
-func (d *DropDown) SetTextOptions(prefix, suffix, currentPrefix, currentSuffix, noSelection string) *DropDown {
+func (d *DropDown) SetTextOptions(prefix, suffix, currentPrefix, currentSuffix, noSelection string) {
 	d.Lock()
 	defer d.Unlock()
 
@@ -172,18 +237,16 @@ func (d *DropDown) SetTextOptions(prefix, suffix, currentPrefix, currentSuffix, 
 	d.optionPrefix = prefix
 	d.optionSuffix = suffix
 	for index := 0; index < d.list.GetItemCount(); index++ {
-		d.list.SetItemText(index, prefix+d.options[index].Text+suffix, "")
+		d.list.SetItemText(index, prefix+d.options[index].text+suffix, "")
 	}
-	return d
 }
 
 // SetLabel sets the text to be displayed before the input area.
-func (d *DropDown) SetLabel(label string) *DropDown {
+func (d *DropDown) SetLabel(label string) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.label = label
-	return d
 }
 
 // GetLabel returns the text to be displayed before the input area.
@@ -196,138 +259,212 @@ func (d *DropDown) GetLabel() string {
 
 // SetLabelWidth sets the screen width of the label. A value of 0 will cause the
 // primitive to use the width of the label string.
-func (d *DropDown) SetLabelWidth(width int) *DropDown {
+func (d *DropDown) SetLabelWidth(width int) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.labelWidth = width
-	return d
 }
 
 // SetLabelColor sets the color of the label.
-func (d *DropDown) SetLabelColor(color tcell.Color) *DropDown {
+func (d *DropDown) SetLabelColor(color tcell.Color) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.labelColor = color
-	return d
+}
+
+// SetLabelColorFocused sets the color of the label when focused.
+func (d *DropDown) SetLabelColorFocused(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.labelColorFocused = color
 }
 
 // SetFieldBackgroundColor sets the background color of the options area.
-func (d *DropDown) SetFieldBackgroundColor(color tcell.Color) *DropDown {
+func (d *DropDown) SetFieldBackgroundColor(color tcell.Color) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.fieldBackgroundColor = color
-	return d
+}
+
+// SetFieldBackgroundColorFocused sets the background color of the options area when focused.
+func (d *DropDown) SetFieldBackgroundColorFocused(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.fieldBackgroundColorFocused = color
 }
 
 // SetFieldTextColor sets the text color of the options area.
-func (d *DropDown) SetFieldTextColor(color tcell.Color) *DropDown {
+func (d *DropDown) SetFieldTextColor(color tcell.Color) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.fieldTextColor = color
-	return d
+}
+
+// SetFieldTextColorFocused sets the text color of the options area when focused.
+func (d *DropDown) SetFieldTextColorFocused(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.fieldTextColorFocused = color
+}
+
+// SetDropDownTextColor sets text color of the drop-down list.
+func (d *DropDown) SetDropDownTextColor(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.list.SetMainTextColor(color)
+}
+
+// SetDropDownBackgroundColor sets the background color of the drop-down list.
+func (d *DropDown) SetDropDownBackgroundColor(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.list.SetBackgroundColor(color)
+}
+
+// SetDropDownSelectedTextColor sets the text color of the selected option in
+// the drop-down list.
+func (d *DropDown) SetDropDownSelectedTextColor(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.list.SetSelectedTextColor(color)
+}
+
+// SetDropDownSelectedBackgroundColor sets the background color of the selected
+// option in the drop-down list.
+func (d *DropDown) SetDropDownSelectedBackgroundColor(color tcell.Color) {
+	d.Lock()
+	defer d.Unlock()
+
+	d.list.SetSelectedBackgroundColor(color)
 }
 
 // SetPrefixTextColor sets the color of the prefix string. The prefix string is
 // shown when the user starts typing text, which directly selects the first
 // option that starts with the typed string.
-func (d *DropDown) SetPrefixTextColor(color tcell.Color) *DropDown {
+func (d *DropDown) SetPrefixTextColor(color tcell.Color) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.prefixTextColor = color
-	return d
-}
-
-// SetFormAttributes sets attributes shared by all form items.
-func (d *DropDown) SetFormAttributes(labelWidth int, labelColor, bgColor, fieldTextColor, fieldBgColor tcell.Color) FormItem {
-	d.Lock()
-	defer d.Unlock()
-
-	d.labelWidth = labelWidth
-	d.labelColor = labelColor
-	d.backgroundColor = bgColor
-	d.fieldTextColor = fieldTextColor
-	d.fieldBackgroundColor = fieldBgColor
-	return d
 }
 
 // SetFieldWidth sets the screen width of the options area. A value of 0 means
 // extend to as long as the longest option text.
-func (d *DropDown) SetFieldWidth(width int) *DropDown {
+func (d *DropDown) SetFieldWidth(width int) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.fieldWidth = width
-	return d
+}
+
+// GetFieldHeight returns the height of the field.
+func (d *DropDown) GetFieldHeight() int {
+	return 1
 }
 
 // GetFieldWidth returns this primitive's field screen width.
 func (d *DropDown) GetFieldWidth() int {
 	d.RLock()
 	defer d.RUnlock()
+	return d.getFieldWidth()
+}
 
+func (d *DropDown) getFieldWidth() int {
 	if d.fieldWidth > 0 {
 		return d.fieldWidth
 	}
 	fieldWidth := 0
 	for _, option := range d.options {
-		width := TaggedStringWidth(option.Text)
+		width := TaggedStringWidth(option.text)
 		if width > fieldWidth {
 			fieldWidth = width
 		}
 	}
+	fieldWidth += len(d.optionPrefix) + len(d.optionSuffix)
+	fieldWidth += len(d.currentOptionPrefix) + len(d.currentOptionSuffix)
+	fieldWidth += 3 // space + dropDownSymbol + space
 	return fieldWidth
 }
 
-// AddOption adds a new selectable option to this drop-down. The "selected"
-// callback is called when this option was selected. It may be nil.
-func (d *DropDown) AddOption(text string, selected func()) *DropDown {
-	d.Lock()
-	defer d.Unlock()
-
-	return d.addOption(text, selected)
+// AddOptionsSimple adds new selectable options to this drop-down.
+func (d *DropDown) AddOptionsSimple(options ...string) {
+	optionsToAdd := make([]*DropDownOption, len(options))
+	for i, option := range options {
+		optionsToAdd[i] = NewDropDownOption(option)
+	}
+	d.AddOptions(optionsToAdd...)
 }
 
-func (d *DropDown) addOption(text string, selected func()) *DropDown {
-	d.options = append(d.options, &dropDownOption{Text: text, Selected: selected})
-	d.list.AddItem(d.optionPrefix+text+d.optionSuffix, "", 0, nil)
-	return d
+// AddOptions adds new selectable options to this drop-down.
+func (d *DropDown) AddOptions(options ...*DropDownOption) {
+	d.Lock()
+	defer d.Unlock()
+	d.addOptions(options...)
+}
+
+func (d *DropDown) addOptions(options ...*DropDownOption) {
+	d.options = append(d.options, options...)
+	for _, option := range options {
+		d.list.AddItem(NewListItem(d.optionPrefix + option.text + d.optionSuffix))
+	}
+}
+
+// SetOptionsSimple replaces all current options with the ones provided and installs
+// one callback function which is called when one of the options is selected.
+// It will be called with the option's index and the option itself
+// The "selected" parameter may be nil.
+func (d *DropDown) SetOptionsSimple(selected func(index int, option *DropDownOption), options ...string) {
+	optionsToSet := make([]*DropDownOption, len(options))
+	for i, option := range options {
+		optionsToSet[i] = NewDropDownOption(option)
+	}
+	d.SetOptions(selected, optionsToSet...)
 }
 
 // SetOptions replaces all current options with the ones provided and installs
 // one callback function which is called when one of the options is selected.
-// It will be called with the option's text and its index into the options
-// slice. The "selected" parameter may be nil.
-func (d *DropDown) SetOptions(texts []string, selected func(text string, index int)) *DropDown {
+// It will be called with the option's index and the option itself.
+// The "selected" parameter may be nil.
+func (d *DropDown) SetOptions(selected func(index int, option *DropDownOption), options ...*DropDownOption) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.list.Clear()
 	d.options = nil
-	for index, text := range texts {
-		func(t string, i int) {
-			d.addOption(text, nil)
-		}(text, index)
-	}
+	d.addOptions(options...)
 	d.selected = selected
-	return d
 }
 
-// SetSelectedFunc sets a handler which is called when the user changes the
+// SetChangedFunc sets a handler which is called when the user changes the
+// focused drop-down option. The handler is provided with the selected option's
+// index and the option itself. If "no option" was selected, these values are
+// -1 and nil.
+func (d *DropDown) SetChangedFunc(handler func(index int, option *DropDownOption)) {
+	d.list.SetChangedFunc(func(index int, item *ListItem) {
+		handler(index, d.options[index])
+	})
+}
+
+// SetSelectedFunc sets a handler which is called when the user selects a
 // drop-down's option. This handler will be called in addition and prior to
 // an option's optional individual handler. The handler is provided with the
-// selected option's text and index. If "no option" was selected, these values
-// are an empty string and -1.
-func (d *DropDown) SetSelectedFunc(handler func(text string, index int)) *DropDown {
+// selected option's index and the option itself. If "no option" was selected, these values
+// are -1 and nil.
+func (d *DropDown) SetSelectedFunc(handler func(index int, option *DropDownOption)) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.selected = handler
-	return d
 }
 
 // SetDoneFunc sets a handler which is called when the user is done selecting
@@ -337,21 +474,19 @@ func (d *DropDown) SetSelectedFunc(handler func(text string, index int)) *DropDo
 //   - KeyEscape: Abort selection.
 //   - KeyTab: Move to the next field.
 //   - KeyBacktab: Move to the previous field.
-func (d *DropDown) SetDoneFunc(handler func(key tcell.Key)) *DropDown {
+func (d *DropDown) SetDoneFunc(handler func(key tcell.Key)) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.done = handler
-	return d
 }
 
 // SetFinishedFunc sets a callback invoked when the user leaves this form item.
-func (d *DropDown) SetFinishedFunc(handler func(key tcell.Key)) FormItem {
+func (d *DropDown) SetFinishedFunc(handler func(key tcell.Key)) {
 	d.Lock()
 	defer d.Unlock()
 
 	d.finished = handler
-	return d
 }
 
 // Draw draws this primitive onto the screen.
@@ -361,6 +496,22 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 
 	d.Lock()
 	defer d.Unlock()
+
+	// Select colors
+	labelColor := d.labelColor
+	fieldBackgroundColor := d.fieldBackgroundColor
+	fieldTextColor := d.fieldTextColor
+	if hasFocus {
+		if d.labelColorFocused != ColorUnset {
+			labelColor = d.labelColorFocused
+		}
+		if d.fieldBackgroundColorFocused != ColorUnset {
+			fieldBackgroundColor = d.fieldBackgroundColorFocused
+		}
+		if d.fieldTextColorFocused != ColorUnset {
+			fieldTextColor = d.fieldTextColorFocused
+		}
+	}
 
 	// Prepare.
 	x, y, width, height := d.GetInnerRect()
@@ -375,10 +526,10 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 		if labelWidth > rightLimit-x {
 			labelWidth = rightLimit - x
 		}
-		Print(screen, d.label, x, y, labelWidth, AlignLeft, d.labelColor)
+		Print(screen, []byte(d.label), x, y, labelWidth, AlignLeft, labelColor)
 		x += labelWidth
 	} else {
-		_, drawnWidth := Print(screen, d.label, x, y, rightLimit-x, AlignLeft, d.labelColor)
+		_, drawnWidth := Print(screen, []byte(d.label), x, y, rightLimit-x, AlignLeft, labelColor)
 		x += drawnWidth
 	}
 
@@ -386,14 +537,14 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 	maxWidth := 0
 	optionWrapWidth := TaggedStringWidth(d.optionPrefix + d.optionSuffix)
 	for _, option := range d.options {
-		strWidth := TaggedStringWidth(option.Text) + optionWrapWidth
+		strWidth := TaggedStringWidth(option.text) + optionWrapWidth
 		if strWidth > maxWidth {
 			maxWidth = strWidth
 		}
 	}
 
 	// Draw selection area.
-	fieldWidth := d.fieldWidth
+	fieldWidth := d.getFieldWidth()
 	if fieldWidth == 0 {
 		fieldWidth = maxWidth
 		if d.currentOption < 0 {
@@ -402,7 +553,7 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 				fieldWidth = noSelectionWidth
 			}
 		} else if d.currentOption < len(d.options) {
-			currentOptionWidth := TaggedStringWidth(d.currentOptionPrefix + d.options[d.currentOption].Text + d.currentOptionSuffix)
+			currentOptionWidth := TaggedStringWidth(d.currentOptionPrefix + d.options[d.currentOption].text + d.currentOptionSuffix)
 			if currentOptionWidth > fieldWidth {
 				fieldWidth = currentOptionWidth
 			}
@@ -411,10 +562,7 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 	if rightLimit-x < fieldWidth {
 		fieldWidth = rightLimit - x
 	}
-	fieldStyle := tcell.StyleDefault.Background(d.fieldBackgroundColor)
-	if hasFocus && !d.open {
-		fieldStyle = fieldStyle.Background(d.fieldTextColor)
-	}
+	fieldStyle := tcell.StyleDefault.Background(fieldBackgroundColor)
 	for index := 0; index < fieldWidth; index++ {
 		screen.SetContent(x+index, y, ' ', nil, fieldStyle)
 	}
@@ -423,29 +571,34 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 	if d.open && len(d.prefix) > 0 {
 		// Show the prefix.
 		currentOptionPrefixWidth := TaggedStringWidth(d.currentOptionPrefix)
-		prefixWidth := stringWidth(d.prefix)
-		listItemText := d.options[d.list.GetCurrentItem()].Text
-		Print(screen, d.currentOptionPrefix, x, y, fieldWidth, AlignLeft, d.fieldTextColor)
-		Print(screen, d.prefix, x+currentOptionPrefixWidth, y, fieldWidth-currentOptionPrefixWidth, AlignLeft, d.prefixTextColor)
+		prefixWidth := runewidth.StringWidth(d.prefix)
+		listItemText := d.options[d.list.GetCurrentItemIndex()].text
+		Print(screen, []byte(d.currentOptionPrefix), x, y, fieldWidth, AlignLeft, fieldTextColor)
+		Print(screen, []byte(d.prefix), x+currentOptionPrefixWidth, y, fieldWidth-currentOptionPrefixWidth, AlignLeft, d.prefixTextColor)
 		if len(d.prefix) < len(listItemText) {
-			Print(screen, listItemText[len(d.prefix):]+d.currentOptionSuffix, x+prefixWidth+currentOptionPrefixWidth, y, fieldWidth-prefixWidth-currentOptionPrefixWidth, AlignLeft, d.fieldTextColor)
+			Print(screen, []byte(listItemText[len(d.prefix):]+d.currentOptionSuffix), x+prefixWidth+currentOptionPrefixWidth, y, fieldWidth-prefixWidth-currentOptionPrefixWidth, AlignLeft, fieldTextColor)
 		}
 	} else {
-		color := d.fieldTextColor
+		color := fieldTextColor
 		text := d.noSelection
 		if d.currentOption >= 0 && d.currentOption < len(d.options) {
-			text = d.currentOptionPrefix + d.options[d.currentOption].Text + d.currentOptionSuffix
+			text = d.currentOptionPrefix + d.options[d.currentOption].text + d.currentOptionSuffix
 		}
+		// Abbreviate text when not fitting
+		if fieldWidth > len(d.abbreviationChars)+3 && len(text) > fieldWidth {
+			text = text[0:fieldWidth-3-len(d.abbreviationChars)] + d.abbreviationChars
+		}
+
 		// Just show the current selection.
-		if hasFocus && !d.open {
-			color = d.fieldBackgroundColor
-		}
-		Print(screen, text, x, y, fieldWidth, AlignLeft, color)
+		Print(screen, []byte(text), x, y, fieldWidth, AlignLeft, color)
 	}
+
+	// Draw drop-down symbol
+	screen.SetContent(x+fieldWidth-2, y, d.dropDownSymbol, nil, new(tcell.Style).Foreground(fieldTextColor).Background(fieldBackgroundColor))
 
 	// Draw options list.
 	if hasFocus && d.open {
-		// We prefer to drop down but if there is no space, maybe drop up?
+		// We prefer to drop-down but if there is no space, maybe drop up?
 		lx := x
 		ly := y + 1
 		lheight := len(d.options)
@@ -462,6 +615,9 @@ func (d *DropDown) Draw(screen tcell.Screen) {
 		lwidth := maxWidth
 		if d.list.scrollBarVisibility == ScrollBarAlways || (d.list.scrollBarVisibility == ScrollBarAuto && len(d.options) > lheight) {
 			lwidth++ // Add space for scroll bar
+		}
+		if lwidth < fieldWidth {
+			lwidth = fieldWidth
 		}
 		d.list.SetRect(lx, ly, lwidth, lheight)
 		d.list.Draw(screen)
@@ -501,7 +657,7 @@ func (d *DropDown) InputHandler() func(event *tcell.EventKey, setFocus func(p Pr
 func (d *DropDown) evalPrefix() {
 	if len(d.prefix) > 0 {
 		for index, option := range d.options {
-			if strings.HasPrefix(strings.ToLower(option.Text), d.prefix) {
+			if strings.HasPrefix(strings.ToLower(option.text), d.prefix) {
 				d.list.SetCurrentItem(index)
 				return
 			}
@@ -518,7 +674,7 @@ func (d *DropDown) openList(setFocus func(Primitive)) {
 	d.open = true
 	optionBefore := d.currentOption
 
-	d.list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	d.list.SetSelectedFunc(func(index int, item *ListItem) {
 		if d.dragging {
 			return // If we're dragging the mouse, we don't want to trigger any events.
 		}
@@ -529,12 +685,13 @@ func (d *DropDown) openList(setFocus func(Primitive)) {
 
 		// Trigger "selected" event.
 		if d.selected != nil {
-			d.selected(d.options[d.currentOption].Text, d.currentOption)
+			d.selected(d.currentOption, d.options[d.currentOption])
 		}
-		if d.options[d.currentOption].Selected != nil {
-			d.options[d.currentOption].Selected()
+		if d.options[d.currentOption].selected != nil {
+			d.options[d.currentOption].selected(d.currentOption, d.options[d.currentOption])
 		}
-	}).SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	})
+	d.list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune {
 			d.prefix += string(event.Rune())
 			d.evalPrefix()
@@ -546,7 +703,13 @@ func (d *DropDown) openList(setFocus func(Primitive)) {
 			d.evalPrefix()
 		} else if event.Key() == tcell.KeyEscape {
 			d.currentOption = optionBefore
+			d.list.SetCurrentItem(d.currentOption)
 			d.closeList(setFocus)
+			if d.selected != nil {
+				if d.currentOption > -1 {
+					d.selected(d.currentOption, d.options[d.currentOption])
+				}
+			}
 		} else {
 			d.prefix = ""
 		}
