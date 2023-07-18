@@ -9,8 +9,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-//TODO: make testing for new search index
-
 // Default keys, runes, and mod masks for simplicity
 var dk tcell.Key = tcell.KeyF64
 var dr rune = '_'
