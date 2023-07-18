@@ -18,13 +18,14 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-// Settings
-type config struct {
-	Sandbox bool
-	Testing bool
-}
+// Breakpoint boundaries
+const BREAKPOINT_HEIGHT = 30
+const BREAKPOINT_WIDTH = 110
 
-var globalSettings config = config{false, false}
+// Global configuration variables
+var testingMode = false
+var smallWidth = false
+var smallHeight = false
 
 // jsonColorInfo type used to hold imported colors
 type jsonColorInfo struct {
@@ -46,14 +47,18 @@ type ColorValues struct {
 	Name    string
 }
 
-var colorBlock string = `
+var colorBlockWide string = `
   ███████████████████
   ███████████████████
   ███████████████████
   ███████████████████
 `
 
-var colorText string = `
+var colorBlockSmall string = `
+  ████████████
+`
+
+var colorTextWide string = `
   RGB: %v, %v, %v
 
   HSV: %v°, %v%%, %v%%
@@ -67,6 +72,24 @@ var colorText string = `
   Decimal: %v
 
   Ansi: "\033%v"
+`
+
+var colorTextSmall string = `
+RGB: %v,%v,%v
+
+HSV: %v°,%v%%,%v%%
+
+HSL: %v°,%v%%,%v%%
+
+CMYK: %v%%,%v%%
+	  %v%%,%v%%
+
+Hex: #%v
+
+Decimal: %v
+
+Ansi:
+"\033%v"
 `
 
 var colorPageText string = "██████████  %v    %v  "
@@ -295,18 +318,16 @@ func colorPageCaptureHandler(event *tcell.EventKey) *tcell.EventKey {
 		app.SetFocus(hTable)
 
 		_, col := hTable.GetSelection()
-		darkHSV := color.HSV{col * 2, 100, 100}
-		lightHSV := color.HSV{col*2 + 1, 100, 100}
+		darkHSV := color.HSV{H: col * 2, S: 100, V: 100}
+		lightHSV := color.HSV{H: col*2 + 1, S: 100, V: 100}
 		setColorValues(darkHSV, darkHBlock, darkHText, lightHSV, lightHBlock, lightHText)
 
 		colorInfo[colorPageIndex].table.SetSelectedStyle(tcell.ColorDefault, tcell.ColorDefault, tcell.AttrBold)
 
 	}
 
-	event = searchInputCaptureHandler(event)
-	event = colorPageMovementHandler(event)
-
-	return event
+	searchInputCaptureHandler(event)
+	return colorPageMovementHandler(event)
 }
 
 // Handle any movement events by preventing the user from selecting
@@ -387,9 +408,17 @@ func hScreenSetup() {
 	// Dark color value setup
 	darkText := cview.NewTextView()
 	darkText.SetScrollBarVisibility(cview.ScrollBarNever)
-	darkText.SetText("Dark Tint Color")
 
-	darkHBlock.SetText(colorBlock)
+	if !smallWidth && !smallHeight {
+		darkText.SetText("Dark Tint Color")
+
+		darkHBlock.SetText(colorBlockWide)
+	} else {
+		darkText.SetText("Color")
+
+		darkHBlock.SetText(colorBlockSmall)
+	}
+
 	darkHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
 
 	darkHText.SetScrollBarVisibility(cview.ScrollBarNever)
@@ -402,24 +431,29 @@ func hScreenSetup() {
 
 	// Light color value setup
 	lightText := cview.NewTextView()
-	lightText.SetScrollBarVisibility(cview.ScrollBarNever)
-	lightText.SetText("Light Tint Color")
-
-	lightHBlock.SetText(colorBlock)
-	lightHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
-
-	lightHText.SetScrollBarVisibility(cview.ScrollBarNever)
-
 	lightColorFlex := cview.NewFlex()
-	lightColorFlex.SetDirection(cview.FlexRow)
-	lightColorFlex.AddItem(lightText, 0, 1, false)
-	lightColorFlex.AddItem(lightHBlock, 0, 2, false)
-	lightColorFlex.AddItem(lightHText, 0, 9, false)
+	if !smallHeight && !smallWidth {
+		lightText.SetScrollBarVisibility(cview.ScrollBarNever)
+		lightText.SetText("  Light Tint Color")
+
+		lightHBlock.SetText(colorBlockWide)
+
+		lightHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
+
+		lightHText.SetScrollBarVisibility(cview.ScrollBarNever)
+
+		lightColorFlex.SetDirection(cview.FlexRow)
+		lightColorFlex.AddItem(lightText, 0, 1, false)
+		lightColorFlex.AddItem(lightHBlock, 0, 2, false)
+		lightColorFlex.AddItem(lightHText, 0, 9, false)
+	}
 
 	colorFlex := cview.NewFlex()
 	colorFlex.SetDirection(cview.FlexRow)
 	colorFlex.AddItem(darkColorFlex, 0, 1, false)
-	colorFlex.AddItem(lightColorFlex, 0, 1, false)
+	if !smallHeight && !smallWidth {
+		colorFlex.AddItem(lightColorFlex, 0, 1, false)
+	}
 
 	// Everything except hTable setup
 	lowerFlex := cview.NewFlex()
@@ -436,26 +470,35 @@ func hScreenSetup() {
 	hFlex.AddItem(help, 0, 1, false)
 	hFlex.AddItem(lowerFlex, 0, 20, false)
 
-	darkHSV := color.HSV{0, 100, 100}
-	lightHSV := color.HSV{0, 100, 100}
+	darkHSV := color.HSV{H: 0, S: 100, V: 100}
+	lightHSV := color.HSV{H: 0, S: 100, V: 100}
 	setColorValues(darkHSV, darkHBlock, darkHText, lightHSV, lightHBlock, lightHText)
 }
 
 func svScreenSetup() {
 	// Fill the text with the default values
-	darkSVBlock.SetText(colorBlock)
 	darkSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
-
-	lightSVBlock.SetText(colorBlock)
 	lightSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
 
-	darkHSV := color.HSV{0, 100, 99}
-	lightHSV := color.HSV{0, 100, 100}
+	if !smallWidth && !smallHeight {
+		darkSVBlock.SetText(colorBlockWide)
+
+		lightSVBlock.SetText(colorBlockWide)
+	} else {
+		darkSVBlock.SetText(colorBlockSmall)
+	}
+
+	darkHSV := color.HSV{H: 0, S: 100, V: 99}
+	lightHSV := color.HSV{H: 0, S: 100, V: 100}
 	setColorValues(darkHSV, darkSVBlock, darkSVText, lightHSV, lightSVBlock, lightSVText)
 
 	// Setup the screen
 	darkTitle := cview.NewTextView()
-	darkTitle.SetText("  Dark Tint Color")
+	if !smallWidth && !smallHeight {
+		darkTitle.SetText("  Dark Tint Color")
+	} else {
+		darkTitle.SetText("  Color")
+	}
 
 	darkSVText.SetScrollBarVisibility(cview.ScrollBarNever)
 
@@ -466,20 +509,24 @@ func svScreenSetup() {
 	darkSVFlex.AddItem(darkSVText, 0, 9, false)
 
 	lightTitle := cview.NewTextView()
-	lightTitle.SetText("  Light Tint Color")
-
-	lightSVText.SetScrollBarVisibility(cview.ScrollBarNever)
-
 	lightSVFlex := cview.NewFlex()
-	lightSVFlex.SetDirection(cview.FlexRow)
-	lightSVFlex.AddItem(lightTitle, 0, 1, false)
-	lightSVFlex.AddItem(lightSVBlock, 0, 2, false)
-	lightSVFlex.AddItem(lightSVText, 0, 9, false)
+	if !smallHeight && !smallWidth {
+		lightTitle.SetText("  Light Tint Color")
+
+		lightSVText.SetScrollBarVisibility(cview.ScrollBarNever)
+
+		lightSVFlex.SetDirection(cview.FlexRow)
+		lightSVFlex.AddItem(lightTitle, 0, 1, false)
+		lightSVFlex.AddItem(lightSVBlock, 0, 2, false)
+		lightSVFlex.AddItem(lightSVText, 0, 9, false)
+	}
 
 	colorFlex := cview.NewFlex()
 	colorFlex.SetDirection(cview.FlexRow)
 	colorFlex.AddItem(darkSVFlex, 0, 1, false)
-	colorFlex.AddItem(lightSVFlex, 0, 1, false)
+	if !smallHeight && !smallWidth {
+		colorFlex.AddItem(lightSVFlex, 0, 1, false)
+	}
 
 	svFlex.AddItem(svTable, 0, 4, false)
 	svFlex.AddItem(colorFlex, 0, 1, false)
@@ -596,7 +643,7 @@ func parseSearchText(text string) {
 		}
 
 		if len(ints) == 3 {
-			rgb := color.RGB{ints[0], ints[1], ints[2]}
+			rgb := color.RGB{R: ints[0], G: ints[1], B: ints[2]}
 			hsv = color.RGBtoHSV(rgb)
 		} else {
 			statusMessage = "Please enter 3 RGB values"
@@ -613,7 +660,7 @@ func parseSearchText(text string) {
 		}
 
 		if len(ints) == 3 {
-			hsv = color.HSV{ints[0], ints[1], ints[2]}
+			hsv = color.HSV{H: ints[0], S: ints[1], V: ints[2]}
 		} else {
 			statusMessage = "Please enter 3 HSV values"
 		}
@@ -629,7 +676,7 @@ func parseSearchText(text string) {
 		}
 
 		if len(ints) == 3 {
-			hsl := color.HSL{ints[0], ints[1], ints[2]}
+			hsl := color.HSL{H: ints[0], S: ints[1], L: ints[2]}
 			hsv = color.HSLtoHSV(hsl)
 		} else {
 			statusMessage = "Please enter 3 HSL values"
@@ -643,7 +690,7 @@ func parseSearchText(text string) {
 		}
 
 		if len(ints) == 4 {
-			cmyk := color.CMYK{ints[0], ints[1], ints[2], ints[3]}
+			cmyk := color.CMYK{C: ints[0], M: ints[1], Y: ints[2], K: ints[3]}
 			hsv = color.CMYKtoHSV(cmyk)
 		} else {
 			statusMessage = "Please enter 4 CMYK values"
@@ -830,7 +877,7 @@ func colorPageSelectedFunc(row int, column int) {
 	text := colorInfo[colorPageIndex].table.GetCell(row, column).Text
 	raw := strings.Split(string(text[:]), "#")
 	hsv := color.HextoHSV(color.Hex(raw[1]))
-	cursor := color.HSVtoRGB(color.HSV{(hsv.H + 180) % 360, 100, 100})
+	cursor := color.HSVtoRGB(color.HSV{H: (hsv.H + 180) % 360, S: 100, V: 100})
 	c := tcell.NewRGBColor(int32(cursor.R), int32(cursor.G), int32(cursor.B))
 	svTable.SetSelectedStyle(c, c, tcell.AttrNone)
 
@@ -877,8 +924,8 @@ func hTableSetup() {
 
 	// Color the hue table
 	for h := 0; h < 360; h += 2 {
-		bg := color.HSVtoRGB(color.HSV{h + 1, 100, 100})
-		fg := color.HSVtoRGB(color.HSV{h, 100, 100})
+		bg := color.HSVtoRGB(color.HSV{H: h + 1, S: 100, V: 100})
+		fg := color.HSVtoRGB(color.HSV{H: h, S: 100, V: 100})
 		bc := tcell.NewRGBColor(int32(bg.R), int32(bg.G), int32(bg.B))
 		c := tcell.NewRGBColor(int32(fg.R), int32(fg.G), int32(fg.B))
 
@@ -911,21 +958,21 @@ func hTableSelectedFunc(row int, column int) {
 	pages.SwitchToPage("Saturation-Value page")
 	app.SetFocus(svTable)
 	svTable.Select(0, 100)
-	cursor := color.HSVtoRGB(color.HSV{(hue + 180) % 360, 100, 100})
+	cursor := color.HSVtoRGB(color.HSV{H: (hue + 180) % 360, S: 100, V: 100})
 	c := tcell.NewRGBColor(int32(cursor.R), int32(cursor.G), int32(cursor.B))
 	svTable.SetSelectedStyle(c, c, tcell.AttrNone)
 
 	drawSVTable()
 
-	darkHSV := color.HSV{hue, 100, 99}
-	lightHSV := color.HSV{hue, 100, 100}
+	darkHSV := color.HSV{H: hue, S: 100, V: 99}
+	lightHSV := color.HSV{H: hue, S: 100, V: 100}
 
 	setColorValues(darkHSV, darkHBlock, darkHText, lightHSV, lightHBlock, lightHText)
 }
 
 func hTableSelectionChangedFunc(row int, column int) {
-	darkHSV := color.HSV{column * 2, 100, 100}
-	lightHSV := color.HSV{column*2 + 1, 100, 100}
+	darkHSV := color.HSV{H: column * 2, S: 100, V: 100}
+	lightHSV := color.HSV{H: column*2 + 1, S: 100, V: 100}
 
 	setColorValues(darkHSV, darkHBlock, darkHText, lightHSV, lightHBlock, lightHText)
 }
@@ -957,24 +1004,19 @@ func svTableDoneFunc(key tcell.Key) {
 }
 
 func svTableSelectedFunc(row int, column int) {
-	if globalSettings.Sandbox {
-		pages.SwitchToPage("Hue page")
-		app.SetFocus(hFocus)
-	} else {
-		hsv := color.HSV{hue, column, 100 - row*2}
-		rgb := color.HSVtoRGB(hsv)
-		hsl := color.HSVtoHSL(hsv)
-		cmyk := color.HSVtoCMYK(hsv)
-		hex := color.HSVtoHex(hsv)
-		decimal := color.HSVtoDecimal(hsv)
-		ansi := color.HSVtoAnsi(hsv)
+	hsv := color.HSV{H: hue, S: column, V: 100 - row*2}
+	rgb := color.HSVtoRGB(hsv)
+	hsl := color.HSVtoHSL(hsv)
+	cmyk := color.HSVtoCMYK(hsv)
+	hex := color.HSVtoHex(hsv)
+	decimal := color.HSVtoDecimal(hsv)
+	ansi := color.HSVtoAnsi(hsv)
 
-		altHsv := color.HSV{hue, column, 99 - row*2}
-		name := getColorName(hsv, altHsv)
-		returnColor = ColorValues{rgb, hsv, hsl, cmyk, hex, decimal, ansi, name}
+	altHsv := color.HSV{H: hue, S: column, V: 99 - row*2}
+	name := getColorName(hsv, altHsv)
+	returnColor = ColorValues{rgb, hsv, hsl, cmyk, hex, decimal, ansi, name}
 
-		app.Stop()
-	}
+	app.Stop()
 }
 
 func svTableSelectionChangedFunc(row int, column int) {
@@ -982,11 +1024,11 @@ func svTableSelectionChangedFunc(row int, column int) {
 	// saturation-value text to contain the right values
 	var darkHSV color.HSV
 	if row*2+1 > 100 {
-		darkHSV = color.HSV{hue, column, 0}
+		darkHSV = color.HSV{H: hue, S: column, V: 0}
 	} else {
-		darkHSV = color.HSV{hue, column, 100 - (row*2 + 1)}
+		darkHSV = color.HSV{H: hue, S: column, V: 100 - (row*2 + 1)}
 	}
-	lightHSV := color.HSV{hue, column, 100 - (row * 2)}
+	lightHSV := color.HSV{H: hue, S: column, V: 100 - (row * 2)}
 	setColorValues(darkHSV, darkSVBlock, darkSVText, lightHSV, lightSVBlock, lightSVText)
 }
 
@@ -996,8 +1038,8 @@ func drawSVTable() {
 	// Draw the table with the correct hue
 	for s := 0; s <= 100; s++ {
 		for v := 0; v < 50; v++ {
-			bg := color.HSVtoRGB(color.HSV{hue, s, 100 - v*2})
-			fg := color.HSVtoRGB(color.HSV{hue, s, 100 - (v*2 + 1)})
+			bg := color.HSVtoRGB(color.HSV{H: hue, S: s, V: 100 - v*2})
+			fg := color.HSVtoRGB(color.HSV{H: hue, S: s, V: 100 - (v*2 + 1)})
 			bc := tcell.NewRGBColor(int32(bg.R), int32(bg.G), int32(bg.B))
 			c := tcell.NewRGBColor(int32(fg.R), int32(fg.G), int32(fg.B))
 
@@ -1047,11 +1089,6 @@ func setColorValues(darkHSV color.HSV, darkBlock *cview.TextView, darkText *cvie
 	darkDecimal := color.HSVtoDecimal(darkHSV)
 	darkAnsi := color.HSVtoAnsi(darkHSV)
 
-	dc := tcell.NewRGBColor(int32(darkRGB.R), int32(darkRGB.G), int32(darkRGB.B))
-	darkBlock.SetTextColor(dc)
-	dText := fmt.Sprintf(colorText, darkRGB.R, darkRGB.G, darkRGB.B, darkHSV.H, darkHSV.S, darkHSV.V, darkHSL.H, darkHSL.S, darkHSL.L, darkCMYK.C, darkCMYK.M, darkCMYK.Y, darkCMYK.K, darkHex, darkDecimal, darkAnsi)
-	darkText.SetText(dText)
-
 	lightRGB := color.HSVtoRGB(lightHSV)
 	lightHSL := color.HSVtoHSL(lightHSV)
 	lightCMYK := color.HSVtoCMYK(lightHSV)
@@ -1059,10 +1096,22 @@ func setColorValues(darkHSV color.HSV, darkBlock *cview.TextView, darkText *cvie
 	lightDecimal := color.HSVtoDecimal(lightHSV)
 	lightAnsi := color.HSVtoAnsi(lightHSV)
 
-	lc := tcell.NewRGBColor(int32(lightRGB.R), int32(lightRGB.G), int32(lightRGB.B))
-	lightBlock.SetTextColor(lc)
-	lText := fmt.Sprintf(colorText, lightRGB.R, lightRGB.G, lightRGB.B, lightHSV.H, lightHSV.S, lightHSV.V, lightHSL.H, lightHSL.S, lightHSL.L, lightCMYK.C, lightCMYK.M, lightCMYK.Y, lightCMYK.K, lightHex, lightDecimal, lightAnsi)
-	lightText.SetText(lText)
+	if !smallWidth && !smallHeight {
+		dc := tcell.NewRGBColor(int32(darkRGB.R), int32(darkRGB.G), int32(darkRGB.B))
+		darkBlock.SetTextColor(dc)
+		dText := fmt.Sprintf(colorTextWide, darkRGB.R, darkRGB.G, darkRGB.B, darkHSV.H, darkHSV.S, darkHSV.V, darkHSL.H, darkHSL.S, darkHSL.L, darkCMYK.C, darkCMYK.M, darkCMYK.Y, darkCMYK.K, darkHex, darkDecimal, darkAnsi)
+		darkText.SetText(dText)
+
+		lc := tcell.NewRGBColor(int32(lightRGB.R), int32(lightRGB.G), int32(lightRGB.B))
+		lightBlock.SetTextColor(lc)
+		lText := fmt.Sprintf(colorTextWide, lightRGB.R, lightRGB.G, lightRGB.B, lightHSV.H, lightHSV.S, lightHSV.V, lightHSL.H, lightHSL.S, lightHSL.L, lightCMYK.C, lightCMYK.M, lightCMYK.Y, lightCMYK.K, lightHex, lightDecimal, lightAnsi)
+		lightText.SetText(lText)
+	} else {
+		dc := tcell.NewRGBColor(int32(darkRGB.R), int32(darkRGB.G), int32(darkRGB.B))
+		darkBlock.SetTextColor(dc)
+		dText := fmt.Sprintf(colorTextSmall, darkRGB.R, darkRGB.G, darkRGB.B, darkHSV.H, darkHSV.S, darkHSV.V, darkHSL.H, darkHSL.S, darkHSL.L, darkCMYK.C, darkCMYK.M, darkCMYK.Y, darkCMYK.K, darkHex, darkDecimal, darkAnsi)
+		darkText.SetText(dText)
+	}
 }
 
 func getColorName(hsv color.HSV, altHSV color.HSV) string {
@@ -1119,12 +1168,12 @@ func getCustomColors(path string) jsonData {
 	var data jsonData
 	if path != "" {
 		raw, err := ioutil.ReadFile(path)
-		if globalSettings.Testing {
+		if testingMode {
 			err = nil
 		}
 		testErr(err)
 
-		if globalSettings.Testing {
+		if testingMode {
 			raw = []byte(presetData)
 		}
 
@@ -1170,24 +1219,20 @@ func testErr(err error) {
 	}
 }
 
-// Start function starts the cpick application. Sandbox (bool) determines whether
-// or not cpick will return a color once selected on the Saturation-Value
-// table (sandbox = false) or go back to the first screen (sandbox = true).
+// Start function starts the cpick application.
 // Testing (bool) is used to test all of the functions to make sure they
 // can run properly without a need for user input (testing = true).
-func Start(sandbox bool, testing bool) (ColorValues, error) {
-	// If being run in testing mode, run the tester function
+func Start(testing bool) (ColorValues, error) {
 	if testing {
+		// If being run in testing mode, run the tester function
+		testingMode = true
 		tester()
-	}
-
-	// When global settings is true (from tester function) and Start is ran,
-	// set the global settings to true. Otherwise, set the settings to what
-	// the user declared.
-	if globalSettings.Testing {
-		globalSettings = config{sandbox, true}
-	} else {
-		globalSettings = config{sandbox, testing}
+	} else if !testingMode {
+		// Find the width and height of the application
+		app.Init()
+		width, height := app.GetScreenSize()
+		smallWidth = width < BREAKPOINT_WIDTH
+		smallHeight = height < BREAKPOINT_HEIGHT
 	}
 
 	app.SetInputCapture(inputCaptureHandler)
@@ -1205,7 +1250,7 @@ func Start(sandbox bool, testing bool) (ColorValues, error) {
 	hScreenSetup()
 	svScreenSetup()
 
-	if !globalSettings.Testing {
+	if !testingMode {
 		app.SetRoot(pages, true)
 		if err := app.Run(); err != nil {
 			log.Fatal(err)

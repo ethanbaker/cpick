@@ -18,7 +18,7 @@ func init() {
 	value	for a color that is selected when cpick is running.`
 
 	x.Method = func(args []string) error {
-		c, err := cpick.Start(false, false)
+		c, err := cpick.Start(false)
 		if err != nil {
 			return err
 		}

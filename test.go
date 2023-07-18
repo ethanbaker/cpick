@@ -9,8 +9,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-//TODO: make testing for new search index
-
 // Default keys, runes, and mod masks for simplicity
 var dk tcell.Key = tcell.KeyF64
 var dr rune = '_'
@@ -31,8 +29,6 @@ var movementKeys = []tcell.Key{tcell.KeyLeft, tcell.KeyRight, tcell.KeyUp, tcell
 // Tester funcion used to test functions used in cpick without having
 // to export them or use them in an interactive application.
 func tester() error {
-	globalSettings = config{false, true}
-
 	// Test screen setups
 	hScreenSetup()
 	svScreenSetup()
@@ -49,7 +45,7 @@ func tester() error {
 		}
 	}
 
-	_, err := Start(false, false)
+	_, err := Start(false)
 
 	return err
 }
@@ -80,8 +76,8 @@ func testColorPages() error {
 	}
 
 	// Test color name getter function
-	var hsvs = [...]color.HSV{color.HSV{0, 100, 100}, color.HSV{0, 100, 99}}
-	var altHsvs = [...]color.HSV{color.HSV{0, 100, 99}, color.HSV{0, 100, 98}}
+	var hsvs = [...]color.HSV{{H: 0, S: 100, V: 100}, {H: 0, S: 100, V: 99}}
+	var altHsvs = [...]color.HSV{{H: 0, S: 100, V: 99}, {H: 0, S: 100, V: 98}}
 	for i := 0; i < len(hsvs); i++ {
 		name := getColorName(hsvs[i], altHsvs[i])
 		switch i {
@@ -104,7 +100,7 @@ func testColorPages() error {
 	}
 
 	// Test colors getter function
-	var paths = [...]string{"", "./colors.json"}
+	var paths = [...]string{"", "./testing/colors.json"}
 	for _, v := range paths {
 		data := getCustomColors(v)
 		if data.COLORLIST[0].NAME != "css" {
@@ -139,8 +135,14 @@ func testColorPageCaptureHandler() error {
 		setEvent := simEvent(dk, v, dm)
 		returnEvent := colorPageCaptureHandler(setEvent)
 
-		if returnEvent != nil {
-			return fmt.Errorf(fmt.Sprintf("Error! colorPageCaptureHandler(%v) is not properly returning nil for movement runes!\nOutput: %v\n", setEvent, returnEvent))
+		if v == 'G' {
+			if returnEvent != nil {
+				return fmt.Errorf(fmt.Sprintf("Error! colorPageCaptureHandler(%v) is not properly returning nil for movement rune 'G'!\nOutput: %v\n", setEvent, returnEvent))
+			}
+		} else {
+			if returnEvent != setEvent {
+				return fmt.Errorf(fmt.Sprintf("Error! colorPageCaptureHandler(%v) is not properly returning nil for movement runes!\nOutput: %v\n", setEvent, returnEvent))
+			}
 		}
 	}
 
@@ -149,8 +151,14 @@ func testColorPageCaptureHandler() error {
 		setEvent := simEvent(v, dr, dm)
 		returnEvent := colorPageCaptureHandler(setEvent)
 
-		if returnEvent != nil {
-			return fmt.Errorf(fmt.Sprintf("Error! colorPageCaptureHandler(%v) is not properly returning nil for movement keys!\nOutput: %v\n", setEvent, returnEvent))
+		if v == 'G' {
+			if returnEvent != nil {
+				return fmt.Errorf(fmt.Sprintf("Error! colorPageCaptureHandler(%v) is not properly returning nil for movement rune 'G'!\nOutput: %v\n", setEvent, returnEvent))
+			}
+		} else {
+			if returnEvent != setEvent {
+				return fmt.Errorf(fmt.Sprintf("Error! colorPageCaptureHandler(%v) is not properly returning nil for movement runes!\nOutput: %v\n", setEvent, returnEvent))
+			}
 		}
 	}
 
@@ -200,9 +208,6 @@ func testSVTable() error {
 	// Test selected function
 	svTableSelectedFunc(0, 0)
 
-	globalSettings = config{true, true}
-	svTableSelectedFunc(0, 0)
-
 	// Test selection changed function
 	svTableSelectionChangedFunc(0, 0)
 	svTableSelectionChangedFunc(50, 0)
@@ -218,10 +223,10 @@ func testSVTable() error {
 	drawSVTable()
 
 	// Test block drawing
-	darkHSV1 := color.HSV{0, 101, 101}
-	darkHSV2 := color.HSV{-1, -1, -1}
-	lightHSV1 := color.HSV{0, 101, 101}
-	lightHSV2 := color.HSV{-1, -1, -1}
+	darkHSV1 := color.HSV{H: 0, S: 101, V: 101}
+	darkHSV2 := color.HSV{H: -1, S: -1, V: -1}
+	lightHSV1 := color.HSV{H: 0, S: 101, V: 101}
+	lightHSV2 := color.HSV{H: -1, S: -1, V: -1}
 	setColorValues(darkHSV1, darkSVBlock, darkSVText, lightHSV1, lightSVBlock, lightSVText)
 	setColorValues(darkHSV2, darkSVBlock, darkSVText, lightHSV2, lightSVBlock, lightSVText)
 
@@ -288,7 +293,7 @@ func testSearch() error {
 	// Test capture handler
 	var eventRunes = [...]rune{'n', 'N'}
 	for i, v := range eventRunes {
-		searchIndexes = [][]int{[]int{0, 0, 0}, []int{1, 1, 1}}
+		searchIndexes = [][]int{{0, 0, 0}, {1, 1, 1}}
 
 		switch i {
 		case 0:
