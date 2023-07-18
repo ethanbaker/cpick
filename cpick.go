@@ -18,7 +18,14 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+// Breakpoint boundaries
+const BREAKPOINT_HEIGHT = 30
+const BREAKPOINT_WIDTH = 110
+
+// Global configuration variables
 var testingMode = false
+var smallWidth = false
+var smallHeight = false
 
 // jsonColorInfo type used to hold imported colors
 type jsonColorInfo struct {
@@ -40,14 +47,18 @@ type ColorValues struct {
 	Name    string
 }
 
-var colorBlock string = `
+var colorBlockWide string = `
   ███████████████████
   ███████████████████
   ███████████████████
   ███████████████████
 `
 
-var colorText string = `
+var colorBlockSmall string = `
+  ████████████
+`
+
+var colorTextWide string = `
   RGB: %v, %v, %v
 
   HSV: %v°, %v%%, %v%%
@@ -61,6 +72,24 @@ var colorText string = `
   Decimal: %v
 
   Ansi: "\033%v"
+`
+
+var colorTextSmall string = `
+RGB: %v,%v,%v
+
+HSV: %v°,%v%%,%v%%
+
+HSL: %v°,%v%%,%v%%
+
+CMYK: %v%%,%v%%
+	  %v%%,%v%%
+
+Hex: #%v
+
+Decimal: %v
+
+Ansi:
+"\033%v"
 `
 
 var colorPageText string = "██████████  %v    %v  "
@@ -379,9 +408,17 @@ func hScreenSetup() {
 	// Dark color value setup
 	darkText := cview.NewTextView()
 	darkText.SetScrollBarVisibility(cview.ScrollBarNever)
-	darkText.SetText("Dark Tint Color")
 
-	darkHBlock.SetText(colorBlock)
+	if !smallWidth && !smallHeight {
+		darkText.SetText("Dark Tint Color")
+
+		darkHBlock.SetText(colorBlockWide)
+	} else {
+		darkText.SetText("Color")
+
+		darkHBlock.SetText(colorBlockSmall)
+	}
+
 	darkHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
 
 	darkHText.SetScrollBarVisibility(cview.ScrollBarNever)
@@ -394,24 +431,29 @@ func hScreenSetup() {
 
 	// Light color value setup
 	lightText := cview.NewTextView()
-	lightText.SetScrollBarVisibility(cview.ScrollBarNever)
-	lightText.SetText("Light Tint Color")
-
-	lightHBlock.SetText(colorBlock)
-	lightHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
-
-	lightHText.SetScrollBarVisibility(cview.ScrollBarNever)
-
 	lightColorFlex := cview.NewFlex()
-	lightColorFlex.SetDirection(cview.FlexRow)
-	lightColorFlex.AddItem(lightText, 0, 1, false)
-	lightColorFlex.AddItem(lightHBlock, 0, 2, false)
-	lightColorFlex.AddItem(lightHText, 0, 9, false)
+	if !smallHeight && !smallWidth {
+		lightText.SetScrollBarVisibility(cview.ScrollBarNever)
+		lightText.SetText("  Light Tint Color")
+
+		lightHBlock.SetText(colorBlockWide)
+
+		lightHBlock.SetScrollBarVisibility(cview.ScrollBarNever)
+
+		lightHText.SetScrollBarVisibility(cview.ScrollBarNever)
+
+		lightColorFlex.SetDirection(cview.FlexRow)
+		lightColorFlex.AddItem(lightText, 0, 1, false)
+		lightColorFlex.AddItem(lightHBlock, 0, 2, false)
+		lightColorFlex.AddItem(lightHText, 0, 9, false)
+	}
 
 	colorFlex := cview.NewFlex()
 	colorFlex.SetDirection(cview.FlexRow)
 	colorFlex.AddItem(darkColorFlex, 0, 1, false)
-	colorFlex.AddItem(lightColorFlex, 0, 1, false)
+	if !smallHeight && !smallWidth {
+		colorFlex.AddItem(lightColorFlex, 0, 1, false)
+	}
 
 	// Everything except hTable setup
 	lowerFlex := cview.NewFlex()
@@ -435,11 +477,16 @@ func hScreenSetup() {
 
 func svScreenSetup() {
 	// Fill the text with the default values
-	darkSVBlock.SetText(colorBlock)
 	darkSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
-
-	lightSVBlock.SetText(colorBlock)
 	lightSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
+
+	if !smallWidth && !smallHeight {
+		darkSVBlock.SetText(colorBlockWide)
+
+		lightSVBlock.SetText(colorBlockWide)
+	} else {
+		darkSVBlock.SetText(colorBlockSmall)
+	}
 
 	darkHSV := color.HSV{H: 0, S: 100, V: 99}
 	lightHSV := color.HSV{H: 0, S: 100, V: 100}
@@ -447,7 +494,11 @@ func svScreenSetup() {
 
 	// Setup the screen
 	darkTitle := cview.NewTextView()
-	darkTitle.SetText("  Dark Tint Color")
+	if !smallWidth && !smallHeight {
+		darkTitle.SetText("  Dark Tint Color")
+	} else {
+		darkTitle.SetText("  Color")
+	}
 
 	darkSVText.SetScrollBarVisibility(cview.ScrollBarNever)
 
@@ -458,20 +509,24 @@ func svScreenSetup() {
 	darkSVFlex.AddItem(darkSVText, 0, 9, false)
 
 	lightTitle := cview.NewTextView()
-	lightTitle.SetText("  Light Tint Color")
-
-	lightSVText.SetScrollBarVisibility(cview.ScrollBarNever)
-
 	lightSVFlex := cview.NewFlex()
-	lightSVFlex.SetDirection(cview.FlexRow)
-	lightSVFlex.AddItem(lightTitle, 0, 1, false)
-	lightSVFlex.AddItem(lightSVBlock, 0, 2, false)
-	lightSVFlex.AddItem(lightSVText, 0, 9, false)
+	if !smallHeight && !smallWidth {
+		lightTitle.SetText("  Light Tint Color")
+
+		lightSVText.SetScrollBarVisibility(cview.ScrollBarNever)
+
+		lightSVFlex.SetDirection(cview.FlexRow)
+		lightSVFlex.AddItem(lightTitle, 0, 1, false)
+		lightSVFlex.AddItem(lightSVBlock, 0, 2, false)
+		lightSVFlex.AddItem(lightSVText, 0, 9, false)
+	}
 
 	colorFlex := cview.NewFlex()
 	colorFlex.SetDirection(cview.FlexRow)
 	colorFlex.AddItem(darkSVFlex, 0, 1, false)
-	colorFlex.AddItem(lightSVFlex, 0, 1, false)
+	if !smallHeight && !smallWidth {
+		colorFlex.AddItem(lightSVFlex, 0, 1, false)
+	}
 
 	svFlex.AddItem(svTable, 0, 4, false)
 	svFlex.AddItem(colorFlex, 0, 1, false)
@@ -1034,11 +1089,6 @@ func setColorValues(darkHSV color.HSV, darkBlock *cview.TextView, darkText *cvie
 	darkDecimal := color.HSVtoDecimal(darkHSV)
 	darkAnsi := color.HSVtoAnsi(darkHSV)
 
-	dc := tcell.NewRGBColor(int32(darkRGB.R), int32(darkRGB.G), int32(darkRGB.B))
-	darkBlock.SetTextColor(dc)
-	dText := fmt.Sprintf(colorText, darkRGB.R, darkRGB.G, darkRGB.B, darkHSV.H, darkHSV.S, darkHSV.V, darkHSL.H, darkHSL.S, darkHSL.L, darkCMYK.C, darkCMYK.M, darkCMYK.Y, darkCMYK.K, darkHex, darkDecimal, darkAnsi)
-	darkText.SetText(dText)
-
 	lightRGB := color.HSVtoRGB(lightHSV)
 	lightHSL := color.HSVtoHSL(lightHSV)
 	lightCMYK := color.HSVtoCMYK(lightHSV)
@@ -1046,10 +1096,22 @@ func setColorValues(darkHSV color.HSV, darkBlock *cview.TextView, darkText *cvie
 	lightDecimal := color.HSVtoDecimal(lightHSV)
 	lightAnsi := color.HSVtoAnsi(lightHSV)
 
-	lc := tcell.NewRGBColor(int32(lightRGB.R), int32(lightRGB.G), int32(lightRGB.B))
-	lightBlock.SetTextColor(lc)
-	lText := fmt.Sprintf(colorText, lightRGB.R, lightRGB.G, lightRGB.B, lightHSV.H, lightHSV.S, lightHSV.V, lightHSL.H, lightHSL.S, lightHSL.L, lightCMYK.C, lightCMYK.M, lightCMYK.Y, lightCMYK.K, lightHex, lightDecimal, lightAnsi)
-	lightText.SetText(lText)
+	if !smallWidth && !smallHeight {
+		dc := tcell.NewRGBColor(int32(darkRGB.R), int32(darkRGB.G), int32(darkRGB.B))
+		darkBlock.SetTextColor(dc)
+		dText := fmt.Sprintf(colorTextWide, darkRGB.R, darkRGB.G, darkRGB.B, darkHSV.H, darkHSV.S, darkHSV.V, darkHSL.H, darkHSL.S, darkHSL.L, darkCMYK.C, darkCMYK.M, darkCMYK.Y, darkCMYK.K, darkHex, darkDecimal, darkAnsi)
+		darkText.SetText(dText)
+
+		lc := tcell.NewRGBColor(int32(lightRGB.R), int32(lightRGB.G), int32(lightRGB.B))
+		lightBlock.SetTextColor(lc)
+		lText := fmt.Sprintf(colorTextWide, lightRGB.R, lightRGB.G, lightRGB.B, lightHSV.H, lightHSV.S, lightHSV.V, lightHSL.H, lightHSL.S, lightHSL.L, lightCMYK.C, lightCMYK.M, lightCMYK.Y, lightCMYK.K, lightHex, lightDecimal, lightAnsi)
+		lightText.SetText(lText)
+	} else {
+		dc := tcell.NewRGBColor(int32(darkRGB.R), int32(darkRGB.G), int32(darkRGB.B))
+		darkBlock.SetTextColor(dc)
+		dText := fmt.Sprintf(colorTextSmall, darkRGB.R, darkRGB.G, darkRGB.B, darkHSV.H, darkHSV.S, darkHSV.V, darkHSL.H, darkHSL.S, darkHSL.L, darkCMYK.C, darkCMYK.M, darkCMYK.Y, darkCMYK.K, darkHex, darkDecimal, darkAnsi)
+		darkText.SetText(dText)
+	}
 }
 
 func getColorName(hsv color.HSV, altHSV color.HSV) string {
@@ -1161,10 +1223,16 @@ func testErr(err error) {
 // Testing (bool) is used to test all of the functions to make sure they
 // can run properly without a need for user input (testing = true).
 func Start(testing bool) (ColorValues, error) {
-	// If being run in testing mode, run the tester function
 	if testing {
+		// If being run in testing mode, run the tester function
 		testingMode = true
 		tester()
+	} else if !testingMode {
+		// Find the width and height of the application
+		app.Init()
+		width, height := app.GetScreenSize()
+		smallWidth = width < BREAKPOINT_WIDTH
+		smallHeight = height < BREAKPOINT_HEIGHT
 	}
 
 	app.SetInputCapture(inputCaptureHandler)
