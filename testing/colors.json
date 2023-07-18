@@ -1,0 +1,30 @@
+{
+  "colorList": [
+    {
+      "name": "css",
+      "colors": [
+        {"name": "Red",   "value": "#FF0000"},
+        {"name": "Green", "value": "#00FF00"},
+        {"name": "Blue",  "value": "#0000FF"}
+      ]
+    },
+
+    {	
+      "name": "sol",
+      "colors": [
+        {"name": "Red",   "value": "#FF0000"},
+        {"name": "Green", "value": "#00FF00"},
+        {"name": "Blue",  "value": "#0000FF"}
+      ]
+    },
+
+    {	
+      "name": "xterm",
+      "colors": [
+        {"name": "Red",   "value": "#FF0000"},
+        {"name": "Green", "value": "#00FF00"},
+        {"name": "Blue",  "value": "#0000FF"}
+      ]
+    }
+  ]
+}
