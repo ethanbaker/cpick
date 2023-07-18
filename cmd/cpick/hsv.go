@@ -19,7 +19,7 @@ func init() {
 	when cpick is running. The HSV values are separated by semi-colons.`
 
 	x.Method = func(args []string) error {
-		c, err := cpick.Start(false, false)
+		c, err := cpick.Start(false)
 		if err != nil {
 			return err
 		}

@@ -14,6 +14,7 @@ Here are different preset "variables" that you can search and replace in this te
 ![1.2.1](https://img.shields.io/badge/status-1.2.1-red)
 [![GoDoc](https://godoc.org/github.com/ethanbaker/cpick?status.svg)](https://godoc.org/github.com/ethanbaker/cpick)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ethanbaker/cpick)](https://goreportcard.com/report/github.com/ethanbaker/cpick)
+[![Go Coverage](https://github.com/ethanbaker/cpick/wiki/coverage.svg)](https://raw.githack.com/wiki/ethanbaker/cpick/coverage.html)
 
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
@@ -125,20 +126,6 @@ Cpick can be used to select any color and output the corresponding color format.
 
 For more examples, please refer to the [documentation][documentation-url].
 
-#### Cpick Settings
-
-Cpick comes with two boolean settings: sandbox and testing.
-
-* Sandbox
-
-  Sandbox determines whether or not Cpick will return a color. Sandbox is useful for looking at colors that will be used somewhere else, like for a website. If sandbox is set to `true`, Cpick will not return any value but will instead cycle between different color tables. Setting sandbox to `false` means a color will be returned. 
-
-* Testing
-
-  Testing is used to test coverage and validness of Cpick without requiring user input. Testing is useful for making sure Cpick can work on your device. Setting testing to `true` turns on the test mode, while setting testing to `false` keeps Cpick on normal mode.
-
-All of the tests can be found in the [tests.go](https://github.com/ethanbaker/cpick/blob/master/tests.go) file.
-
 #### Controls/Keys
 
 If you are looking for a simplified version, check out the [docs](https://github.com/ethanbaker/cpick/blob/master/colors.go). Here is a more in-depth explanation.
@@ -157,7 +144,7 @@ For the listed color table on the **hue screen**, you can navigate it using the 
 
 In addition, you can press ? to open up a search menu. Here you can search for a specific color or keyword. You can press N to go to the next selection and n to go to the previous selection, just like in vim. 
 
-On the **saturation-value screen**, you can move about the screen using the standard vim keys (h, j, k, l) or the arrow keys. Once on a desired color, press enter to select it (take note that if you ran Cpick with sandbox as true, pressing enter on the table will take you back to the **hue screen**).
+On the **saturation-value screen**, you can move about the screen using the standard vim keys (h, j, k, l) or the arrow keys. Once on a desired color, press enter to select it.
 
 In addition, you can press g to go to the start of the table (top-left most cell) or G to go to the end of the table (bottom-right most cell).
 
@@ -217,6 +204,11 @@ An individual color is an object that consists of two keys: `name` and `value`. 
 
 Cpick comes with three color types as a default: CSS, Solarized, and XTERM. In order to fix complicated import problems, the JSON data is present in the [colors.go](https://github.com/ethanbaker/cpick/blob/master/colors.go) file as a string. The preset data always has the lowest priority for being used.
 
+#### Testing
+
+Cpick has a testing mode that can only be enabled by calling `Start` with testing mode enabled. This automatically happens when you run `go test` in the `cpick` directory.
+
+All of the tests can be found in the [tests.go](https://github.com/ethanbaker/cpick/blob/master/tests.go) file.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

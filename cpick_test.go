@@ -8,7 +8,7 @@ import (
 )
 
 func Test_Start(t *testing.T) {
-	_, err := cpick.Start(false, true)
+	_, err := cpick.Start(true)
 	//_, err := cpick.Start(false, false) // For developing
 
 	if err != nil {
