@@ -2,8 +2,6 @@ module github.com/ethanbaker/cpick
 
 go 1.20
 
-replace github.com/ethanbaker/cpick/cview => ./cview
-
 require (
 	github.com/ethanbaker/colors v0.0.0-20210129164941-24dfc6518fbf
 	github.com/ethanbaker/cpick/cview v0.0.0-00010101000000-000000000000
