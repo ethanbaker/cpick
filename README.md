@@ -11,7 +11,7 @@ Here are different preset "variables" that you can search and replace in this te
 
 
 <!-- PROJECT SHIELDS/BUTTONS -->
-![1.2.1](https://img.shields.io/badge/status-1.2.1-red)
+![1.3.0](https://img.shields.io/badge/status-1.3.0-red)
 [![GoDoc](https://godoc.org/github.com/ethanbaker/cpick?status.svg)](https://godoc.org/github.com/ethanbaker/cpick)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ethanbaker/cpick)](https://goreportcard.com/report/github.com/ethanbaker/cpick)
 [![Go Coverage](https://github.com/ethanbaker/cpick/wiki/coverage.svg)](https://raw.githack.com/wiki/ethanbaker/cpick/coverage.html)
