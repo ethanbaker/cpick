@@ -480,14 +480,6 @@ func svScreenSetup() {
 	darkSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
 	lightSVBlock.SetScrollBarVisibility(cview.ScrollBarNever)
 
-	if !smallWidth && !smallHeight {
-		darkSVBlock.SetText(colorBlockWide)
-
-		lightSVBlock.SetText(colorBlockWide)
-	} else {
-		darkSVBlock.SetText(colorBlockSmall)
-	}
-
 	darkHSV := color.HSV{H: 0, S: 100, V: 99}
 	lightHSV := color.HSV{H: 0, S: 100, V: 100}
 	setColorValues(darkHSV, darkSVBlock, darkSVText, lightHSV, lightSVBlock, lightSVText)
